@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Clock, Shield, CheckCircle, Calculator, FileText, Phone } from "lucide-react"
-import type { CheckedState } from "@radix-ui/react-checkbox"
+type CheckedState = boolean | "indeterminate";
 
 interface QuoteFormProps {
   selectedService: string | null
