@@ -1,6 +1,7 @@
 // app/api/summary-email/route.ts
 import { NextResponse, NextRequest } from "next/server"
-import nodemailer from "nodemailer"
+// import nodemailer from "nodemailer"
+import * as nodemailer from "nodemailer";
 import MarkdownIt from "markdown-it"
 
 export const runtime = "nodejs" as const // Nodemailer needs Node runtime (not Edge)
