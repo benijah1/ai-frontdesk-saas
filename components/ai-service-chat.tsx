@@ -18,6 +18,16 @@ import {
   Lightbulb,
 } from "lucide-react"
 
+// --- Variant normalization to satisfy strict union ---
+const ALLOWED_VARIANTS = new Set(["default", "outline", "secondary"] as const)
+type AllowedVariant = typeof ALLOWED_VARIANTS extends Set<infer T> ? T : never
+
+function toAllowedVariant(v: unknown): AllowedVariant {
+  const s = typeof v === "string" ? v : ""
+  return (ALLOWED_VARIANTS.has(s as AllowedVariant) ? s : "default") as AllowedVariant
+}
+// -----------------------------------------------------
+
 interface AIServiceChatProps {
   service: string
   serviceName: string
@@ -385,24 +395,28 @@ What would be most helpful for you right now? I'm here to make this as easy as p
     setInput("")
     setIsLoading(true)
 
-    setTimeout(
-      () => {
-        const response = generateResponse(currentInput, conversationStage)
+    setTimeout(() => {
+      const response = generateResponse(currentInput, conversationStage)
 
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          type: "assistant",
-          content: response.content,
-          timestamp: new Date(),
-          actions: response.actions,
-        }
+      // Normalize actions to the allowed union before storing in state
+      const mappedActions = response.actions?.map(a => ({
+        label: a.label,
+        action: a.action,
+        variant: toAllowedVariant(a.variant),
+      }))
 
-        setMessages((prev) => [...prev, assistantMessage])
-        setConversationStage(response.newStage as any)
-        setIsLoading(false)
-      },
-      1500 + Math.random() * 1000,
-    )
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: "assistant",
+        content: response.content,
+        timestamp: new Date(),
+        actions: mappedActions, // use normalized actions
+      }
+
+      setMessages((prev) => [...prev, assistantMessage])
+      setConversationStage(response.newStage as any)
+      setIsLoading(false)
+    }, 1500 + Math.random() * 1000)
   }
 
   const handleActionClick = (action: string) => {
@@ -510,7 +524,7 @@ What would be most helpful for you right now? I'm here to make this as easy as p
                           {message.actions.map((action, index) => (
                             <Button
                               key={index}
-                              variant={(action.variant as any) || "outline"}
+                              variant={action.variant ?? "outline"}
                               size="sm"
                               onClick={() => handleActionClick(action.action)}
                               className="text-xs h-8"
