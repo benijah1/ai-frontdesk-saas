@@ -1,181 +1,67 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+/* Tailwind v3 directives */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@custom-variant dark (&:is(.dark *));
 
+/* Theme tokens (OKLCH-friendly but fine in all modern browsers) */
 :root {
-  /* Updated to Fix It! brand colors: red, black, blue, white */
-  --background: oklch(1 0 0); /* White */
-  --foreground: oklch(0.145 0 0); /* Black */
-  --card: oklch(1 0 0); /* White */
-  --card-foreground: oklch(0.145 0 0); /* Black */
-  --popover: oklch(1 0 0); /* White */
-  --popover-foreground: oklch(0.145 0 0); /* Black */
-  --primary: oklch(0.55 0.22 25); /* Red */
-  --primary-foreground: oklch(1 0 0); /* White */
-  --secondary: oklch(0.45 0.15 250); /* Blue */
-  --secondary-foreground: oklch(1 0 0); /* White */
-  --muted: oklch(0.95 0 0); /* Light gray */
-  --muted-foreground: oklch(0.4 0 0); /* Dark gray */
-  --accent: oklch(0.45 0.15 250); /* Blue */
-  --accent-foreground: oklch(1 0 0); /* White */
-  --destructive: oklch(0.55 0.22 25); /* Red */
-  --destructive-foreground: oklch(1 0 0); /* White */
-  --border: oklch(0.9 0 0); /* Light gray */
-  --input: oklch(0.95 0 0); /* Light gray */
-  --ring: oklch(0.45 0.15 250); /* Blue */
-  --chart-1: oklch(0.55 0.22 25); /* Red */
-  --chart-2: oklch(0.45 0.15 250); /* Blue */
-  --chart-3: oklch(0.145 0 0); /* Black */
-  --chart-4: oklch(0.4 0 0); /* Dark gray */
-  --chart-5: oklch(0.6 0 0); /* Medium gray */
-  --radius: 0.625rem;
-  --sidebar: oklch(0.95 0 0); /* Light gray */
-  --sidebar-foreground: oklch(0.145 0 0); /* Black */
-  --sidebar-primary: oklch(0.55 0.22 25); /* Red */
-  --sidebar-primary-foreground: oklch(1 0 0); /* White */
-  --sidebar-accent: oklch(0.45 0.15 250); /* Blue */
-  --sidebar-accent-foreground: oklch(1 0 0); /* White */
-  --sidebar-border: oklch(0.9 0 0); /* Light gray */
-  --sidebar-ring: oklch(0.45 0.15 250); /* Blue */
+--background: oklch(1 0 0);
+--foreground: oklch(0.145 0 0);
+--card: oklch(1 0 0);
+--card-foreground: oklch(0.145 0 0);
+--popover: oklch(1 0 0);
+--popover-foreground: oklch(0.145 0 0);
+--primary: oklch(0.58 0.16 265);
+--primary-foreground: oklch(0.98 0.02 265);
+--secondary: oklch(0.9 0.04 265);
+--secondary-foreground: oklch(0.26 0.02 265);
+--muted: oklch(0.95 0.02 265);
+--muted-foreground: oklch(0.4 0.02 265);
+--accent: oklch(0.92 0.05 160);
+--accent-foreground: oklch(0.25 0.03 160);
+--destructive: oklch(0.64 0.21 29);
+--destructive-foreground: oklch(0.99 0.01 29);
+--border: oklch(0.88 0.02 265);
+--input: oklch(0.92 0.02 265);
+--ring: oklch(0.6 0.16 265);
+--radius: 1rem;
 }
 
-.dark {
-  /* Dark mode with Fix It! brand colors */
-  --background: oklch(0.145 0 0); /* Black */
-  --foreground: oklch(1 0 0); /* White */
-  --card: oklch(0.2 0 0); /* Dark gray */
-  --card-foreground: oklch(1 0 0); /* White */
-  --popover: oklch(0.2 0 0); /* Dark gray */
-  --popover-foreground: oklch(1 0 0); /* White */
-  --primary: oklch(0.6 0.25 25); /* Brighter red */
-  --primary-foreground: oklch(1 0 0); /* White */
-  --secondary: oklch(0.5 0.18 250); /* Brighter blue */
-  --secondary-foreground: oklch(1 0 0); /* White */
-  --muted: oklch(0.25 0 0); /* Dark gray */
-  --muted-foreground: oklch(0.7 0 0); /* Light gray */
-  --accent: oklch(0.5 0.18 250); /* Brighter blue */
-  --accent-foreground: oklch(1 0 0); /* White */
-  --destructive: oklch(0.6 0.25 25); /* Brighter red */
-  --destructive-foreground: oklch(1 0 0); /* White */
-  --border: oklch(0.3 0 0); /* Dark gray */
-  --input: oklch(0.25 0 0); /* Dark gray */
-  --ring: oklch(0.5 0.18 250); /* Brighter blue */
-  --chart-1: oklch(0.6 0.25 25); /* Brighter red */
-  --chart-2: oklch(0.5 0.18 250); /* Brighter blue */
-  --chart-3: oklch(1 0 0); /* White */
-  --chart-4: oklch(0.7 0 0); /* Light gray */
-  --chart-5: oklch(0.5 0 0); /* Medium gray */
-  --sidebar: oklch(0.2 0 0); /* Dark gray */
-  --sidebar-foreground: oklch(1 0 0); /* White */
-  --sidebar-primary: oklch(0.6 0.25 25); /* Brighter red */
-  --sidebar-primary-foreground: oklch(1 0 0); /* White */
-  --sidebar-accent: oklch(0.5 0.18 250); /* Brighter blue */
-  --sidebar-accent-foreground: oklch(1 0 0); /* White */
-  --sidebar-border: oklch(0.3 0 0); /* Dark gray */
-  --sidebar-ring: oklch(0.5 0.18 250); /* Brighter blue */
+
+* { box-sizing: border-box; }
+html, body {
+height: 100%;
+}
+body {
+background: var(--background);
+color: var(--foreground);
+font-feature-settings: "rlig" 1, "calt" 1;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+
+/* Basic utility helpers */
+.container-page {
+@apply mx-auto max-w-6xl px-4 sm:px-6 lg:px-8;
 }
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+.btn {
+@apply inline-flex items-center gap-2 rounded-2xl border border-transparent px-4 py-2 text-sm font-medium transition;
 }
-
-@layer components {
-  .btn,
-  button,
-  [role="button"] {
-    @apply relative;
-  }
-
-  /* Ensure primary buttons always have white text on colored backgrounds */
-  .bg-primary {
-    @apply text-primary-foreground;
-  }
-
-  .bg-secondary {
-    @apply text-secondary-foreground;
-  }
-
-  .bg-destructive {
-    @apply text-destructive-foreground;
-  }
-
-  /* Prevent white text on white backgrounds */
-  .bg-white .text-white,
-  .bg-background .text-white {
-    @apply text-foreground;
-  }
-
-  /* Prevent black text on black backgrounds */
-  .bg-black .text-black,
-  .bg-foreground .text-black {
-    @apply text-background;
-  }
-
-  /* Hover states must maintain contrast */
-  .hover\:bg-white:hover .text-white,
-  .hover\:bg-background:hover .text-white {
-    @apply text-foreground;
-  }
-
-  .hover\:bg-black:hover .text-black,
-  .hover\:bg-foreground:hover .text-black {
-    @apply text-background;
-  }
-
-  /* Emergency and CTA buttons */
-  .emergency-btn {
-    @apply bg-destructive text-destructive-foreground hover:bg-destructive/90;
-  }
-
-  .cta-btn {
-    @apply bg-primary text-primary-foreground hover:bg-primary/90;
-  }
+.btn-primary {
+@apply bg-[color:var(--primary)] text-[color:var(--primary-foreground)] hover:opacity-90;
+}
+.btn-ghost {
+@apply bg-transparent text-[color:var(--foreground)] hover:bg-[color:var(--muted)];
+}
+.card {
+@apply rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] shadow-sm;
+}
+.card-body {
+@apply p-6;
+}
+.nav-link {
+@apply text-sm text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition;
+}
+.nav-link-active {
+@apply font-semibold text-[color:var(--foreground)];
 }
