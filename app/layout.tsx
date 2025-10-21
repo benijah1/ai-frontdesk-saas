@@ -1,6 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Navbar } from "@/components/Navbar";
+import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
   title: "AI FrontDesk SaaS",
@@ -17,5 +17,3 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
-
-export default Navbar
