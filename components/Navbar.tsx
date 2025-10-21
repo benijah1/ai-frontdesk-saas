@@ -1,80 +1,72 @@
-"use client";
+"use client"
 
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
-import { useEffect, useState } from "react";
-
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { useState } from "react"
 
 export default function Navbar() {
-const pathname = usePathname();
-const [open, setOpen] = useState(false);
+  const pathname = usePathname()
+  const [isOpen, setIsOpen] = useState(false)
 
+  const navItems = [
+    { name: "Home", href: "/" },
+    { name: "Dashboard", href: "/dashboard" },
+    { name: "CRM", href: "/crm" },
+    { name: "Services", href: "/services" },
+    { name: "Support", href: "/support" },
+  ]
 
-// Close on route change
-useEffect(() => { setOpen(false); }, [pathname]);
-
-
-const isActive = (href: string) =>
-pathname === href || pathname?.startsWith(href + "/");
-
-
-return (
-  <header className="sticky top-0 z-40 w-full border-b border-[color:var(--border)] bg-[color:var(--card)]/80 backdrop-blur supports-[backdrop-filter]:bg-[color:var(--card)]/60">
-    <nav className="container-page flex h-14 items-center justify-between">
-      <div className="flex items-center gap-3">
-        <button
-          className="md:hidden btn btn-ghost p-2"
-          aria-label="Toggle Menu"
-          onClick={() => setOpen((s) => !s)}
-        >
-          {open ? <X size={18} /> : <Menu size={18} />}
-        </button>
-        <Link href="/" className="font-semibold tracking-tight">
+  return (
+    <nav className="w-full border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
+        <Link href="/" className="text-xl font-semibold tracking-tight">
           AI Front Desk
         </Link>
+
+        {/* Desktop Menu */}
+        <div className="hidden md:flex gap-6">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "text-sm font-medium transition-colors hover:text-primary",
+                pathname === item.href ? "text-primary" : "text-muted-foreground"
+              )}
+            >
+              {item.name}
+            </Link>
+          ))}
+        </div>
+
+        {/* Mobile Menu Toggle */}
+        <div className="md:hidden">
+          <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)}>
+            {isOpen ? "✕" : "☰"}
+          </Button>
+        </div>
       </div>
 
-
-      <ul className="hidden md:flex items-center gap-6">
-        <li>
-        <Link className={`nav-link ${isActive("/") ? "nav-link-active" : ""}`} href="/">Home</Link>
-        </li>
-        <li>
-        <Link className={`nav-link ${isActive("/dashboard") ? "nav-link-active" : ""}`} href="/dashboard">Dashboard</Link>
-        </li>
-        <li>
-        <Link className={`nav-link ${isActive("/crm") ? "nav-link-active" : ""}`} href="/crm">CRM</Link>
-        </li>
-        <li>
-        <Link className={`nav-link ${isActive("/services") ? "nav-link-active" : ""}`} href="/services">Services</Link>
-        </li>
-      </ul>
-
-
-      <div className="hidden md:flex items-center gap-2">
-          <Link href="/auth/signin" className="btn btn-ghost">Sign in</Link>
-          <Link href="/auth/signup" className="btn btn-primary">Start Free</Link>
-        </div>
-      </nav>
-
-
-      {/* Mobile drawer */}
-      {open && (
-        <div className="md:hidden border-t border-[color:var(--border)] bg-[color:var(--card)]">
-          <div className="container-page flex flex-col py-3">
-            <Link className={`py-2 nav-link ${isActive("/") ? "nav-link-active" : ""}`} href="/">Home</Link>
-            <Link className={`py-2 nav-link ${isActive("/dashboard") ? "nav-link-active" : ""}`} href="/dashboard">Dashboard</Link>
-            <Link className={`py-2 nav-link ${isActive("/crm") ? "nav-link-active" : ""}`} href="/crm">CRM</Link>
-            <Link className={`py-2 nav-link ${isActive("/services") ? "nav-link-active" : ""}`} href="/services">Services</Link>
-            <div className="mt-2 flex gap-2">
-              <Link href="/auth/signin" className="btn btn-ghost">Sign in</Link>
-              <Link href="/auth/signup" className="btn btn-primary">Start Free</Link>
-            </div>
-          </div>
+      {/* Mobile Menu */}
+      {isOpen && (
+        <div className="md:hidden border-t bg-background px-6 py-4 space-y-3">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setIsOpen(false)}
+              className={cn(
+                "block text-sm font-medium transition-colors hover:text-primary",
+                pathname === item.href ? "text-primary" : "text-muted-foreground"
+              )}
+            >
+              {item.name}
+            </Link>
+          ))}
         </div>
       )}
-      </header>
-    );
-  }
+    </nav>
+  )
+}
