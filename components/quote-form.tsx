@@ -11,6 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Clock, Shield, CheckCircle, Calculator, FileText, Phone } from "lucide-react"
+import type { CheckedState } from "@radix-ui/react-checkbox";
+
 
 interface QuoteFormProps {
   selectedService: string | null
@@ -248,7 +250,9 @@ export function QuoteForm({ selectedService, serviceDetails, onClose }: QuoteFor
                             <Checkbox
                               id={service}
                               checked={formData.additionalServices.includes(service)}
-                              onCheckedChange={(checked) => handleAdditionalServiceChange(service, checked as boolean)}
+                              onCheckedChange={(checked: CheckedState) =>
+                                handleAdditionalServiceChange(service, checked === true)
+                              }
                             />
                             <Label htmlFor={service} className="text-sm">
                               {service}
