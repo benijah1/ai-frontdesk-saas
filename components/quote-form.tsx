@@ -11,8 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Clock, Shield, CheckCircle, Calculator, FileText, Phone } from "lucide-react"
-import type { CheckedState } from "@radix-ui/react-checkbox";
-
+import type { CheckedState } from "@radix-ui/react-checkbox"
 
 interface QuoteFormProps {
   selectedService: string | null
@@ -47,16 +46,16 @@ export function QuoteForm({ selectedService, serviceDetails, onClose }: QuoteFor
     bathroom: ["Electrical work", "Permit handling", "Demolition", "Cleanup service"],
     plumbing: ["Emergency service", "Permit handling", "Cleanup service", "Follow-up maintenance"],
     hvac: ["Duct cleaning", "Air quality testing", "Smart thermostat", "Maintenance plan"],
-  }
+  } as const
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleAdditionalServiceChange = (service: string, checked: boolean) => {
+  const handleAdditionalServiceChange = (service: string, isChecked: boolean) => {
     setFormData((prev) => ({
       ...prev,
-      additionalServices: checked
+      additionalServices: isChecked
         ? [...prev.additionalServices, service]
         : prev.additionalServices.filter((s) => s !== service),
     }))
@@ -68,16 +67,22 @@ export function QuoteForm({ selectedService, serviceDetails, onClose }: QuoteFor
     // Simulate quote generation with realistic pricing
     await new Promise((resolve) => setTimeout(resolve, 2000))
 
-    const basePrice = {
-      bathroom: { min: 8000, max: 25000 },
-      plumbing: { min: 150, max: 3500 },
-      hvac: { min: 200, max: 8000 },
-    }[selectedService as string] || { min: 500, max: 2000 }
+    const basePrice =
+      (
+        {
+          bathroom: { min: 8000, max: 25000 },
+          plumbing: { min: 150, max: 3500 },
+          hvac: { min: 200, max: 8000 },
+        } as Record<string, { min: number; max: number }>
+      )[selectedService ?? ""] || { min: 500, max: 2000 }
 
-    const urgencyMultiplier = urgencyOptions.find((opt) => opt.value === formData.urgency)?.multiplier || 1.0
+    const urgencyMultiplier =
+      urgencyOptions.find((opt) => opt.value === formData.urgency)?.multiplier || 1.0
     const additionalServicesCost = formData.additionalServices.length * 200
 
-    const estimatedCost = Math.round(((basePrice.min + basePrice.max) / 2) * urgencyMultiplier + additionalServicesCost)
+    const estimatedCost = Math.round(
+      ((basePrice.min + basePrice.max) / 2) * urgencyMultiplier + additionalServicesCost,
+    )
 
     const generatedQuote = {
       service: serviceDetails?.title || "Service",
@@ -87,10 +92,10 @@ export function QuoteForm({ selectedService, serviceDetails, onClose }: QuoteFor
         formData.urgency === "emergency"
           ? "Same day"
           : formData.urgency === "urgent"
-            ? "1-2 days"
-            : formData.urgency === "normal"
-              ? "3-7 days"
-              : "1-4 weeks",
+          ? "1-2 days"
+          : formData.urgency === "normal"
+          ? "3-7 days"
+          : "1-4 weeks",
       breakdown: [
         { item: "Base service", cost: `$${Math.round((basePrice.min + basePrice.max) / 2).toLocaleString()}` },
         ...(urgencyMultiplier > 1
@@ -125,6 +130,9 @@ export function QuoteForm({ selectedService, serviceDetails, onClose }: QuoteFor
     onClose()
   }
 
+  const availableAddOns =
+    selectedService && (additionalServiceOptions as Record<string, readonly string[]>)[selectedService]
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-hidden">
@@ -139,6 +147,7 @@ export function QuoteForm({ selectedService, serviceDetails, onClose }: QuoteFor
               size="sm"
               onClick={onClose}
               className="text-primary-foreground hover:bg-primary-foreground/20"
+              aria-label="Close"
             >
               ×
             </Button>
@@ -239,30 +248,27 @@ export function QuoteForm({ selectedService, serviceDetails, onClose }: QuoteFor
                 </Select>
               </div>
 
-              {selectedService &&
-                additionalServiceOptions[selectedService as keyof typeof additionalServiceOptions] && (
-                  <div>
-                    <Label>Additional Services</Label>
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      {additionalServiceOptions[selectedService as keyof typeof additionalServiceOptions].map(
-                        (service) => (
-                          <div key={service} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={service}
-                              checked={formData.additionalServices.includes(service)}
-                              onCheckedChange={(checked: CheckedState) =>
-                                handleAdditionalServiceChange(service, checked === true)
-                              }
-                            />
-                            <Label htmlFor={service} className="text-sm">
-                              {service}
-                            </Label>
-                          </div>
-                        ),
-                      )}
-                    </div>
+              {selectedService && availableAddOns && (
+                <div>
+                  <Label>Additional Services</Label>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    {availableAddOns.map((service: string) => (
+                      <div key={service} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={service}
+                          checked={formData.additionalServices.includes(service)}
+                          onCheckedChange={(checked: CheckedState) =>
+                            handleAdditionalServiceChange(service, checked === true)
+                          }
+                        />
+                        <Label htmlFor={service} className="text-sm">
+                          {service}
+                        </Label>
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
+              )}
 
               <div>
                 <Label>Preferred Contact Method</Label>
@@ -271,7 +277,9 @@ export function QuoteForm({ selectedService, serviceDetails, onClose }: QuoteFor
                     <Checkbox
                       id="phone-contact"
                       checked={formData.preferredContact === "phone"}
-                      onCheckedChange={() => handleInputChange("preferredContact", "phone")}
+                      onCheckedChange={(checked: CheckedState) => {
+                        if (checked === true) handleInputChange("preferredContact", "phone")
+                      }}
                     />
                     <Label htmlFor="phone-contact" className="text-sm">
                       Phone
@@ -281,7 +289,9 @@ export function QuoteForm({ selectedService, serviceDetails, onClose }: QuoteFor
                     <Checkbox
                       id="email-contact"
                       checked={formData.preferredContact === "email"}
-                      onCheckedChange={() => handleInputChange("preferredContact", "email")}
+                      onCheckedChange={(checked: CheckedState) => {
+                        if (checked === true) handleInputChange("preferredContact", "email")
+                      }}
                     />
                     <Label htmlFor="email-contact" className="text-sm">
                       Email
