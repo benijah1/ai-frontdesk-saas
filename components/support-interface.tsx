@@ -23,7 +23,8 @@ const MarkdownMessage: React.FC<{ text: string; isUser?: boolean }> = ({ text, i
             className="underline"
           />
         ),
-        code({ inline, children, ...props }) {
+        // ✅ Type relax to accept `inline`
+        code({ inline, children, ...props }: any) {
           if (inline) {
             return (
               <code className={`px-1 py-0.5 rounded ${isUser ? "bg-white/20" : "bg-black/10"}`} {...props}>
