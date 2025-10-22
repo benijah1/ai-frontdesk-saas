@@ -30,6 +30,7 @@
     "bcryptjs": "^2.4.3",
     "nodemailer": "^6.9.14",
     "markdown-it": "^14.1.0",
+    "next-themes": "^0.2.1",
     "next-auth": "^4.24.7"
   },
   "devDependencies": {
