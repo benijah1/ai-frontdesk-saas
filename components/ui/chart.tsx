@@ -2,11 +2,12 @@
 
 import * as React from 'react'
 import * as RechartsPrimitive from 'recharts'
-import type { TooltipProps, LegendProps } from 'recharts'
+import type { LegendProps } from 'recharts'
 import type {
   NameType,
   ValueType,
   Payload as DefaultTooltipPayload,
+  TooltipProps, // <- correct Tooltip content props
 } from 'recharts/types/component/DefaultTooltipContent'
 
 import { cn } from '@/lib/utils'
@@ -127,7 +128,7 @@ type ExtraTooltipProps = {
 type TooltipPayload = DefaultTooltipPayload<ValueType, NameType>
 
 /**
- * Typed to Recharts' TooltipProps so TS knows about `payload`, `label`, etc.
+ * Typed to Recharts' Tooltip content props so TS knows about `payload`, `label`, etc.
  * We also allow extra UI props (className, etc.).
  */
 function ChartTooltipContent({
@@ -206,6 +207,7 @@ function ChartTooltipContent({
               )}
             >
               {formatter && item?.value !== undefined && item.name ? (
+                // formatter(value, name, item, index, payloadItem)
                 formatter(item.value as any, item.name as any, item as any, index, item.payload as any)
               ) : (
                 <>
