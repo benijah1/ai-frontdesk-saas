@@ -7,7 +7,6 @@ import type {
   NameType,
   ValueType,
   Payload as DefaultTooltipPayload,
-  TooltipProps, // <- correct Tooltip content props
 } from 'recharts/types/component/DefaultTooltipContent'
 
 import { cn } from '@/lib/utils'
@@ -19,6 +18,30 @@ type LegendPayload = {
   dataKey?: string | number
   payload?: Record<string, unknown>
 }
+
+// Minimal tooltip props our custom content actually uses.
+// This sidesteps Recharts' version-specific TooltipProps exports.
+type InternalTooltipProps<TV = ValueType, TN = NameType> = {
+  active?: boolean
+  payload?: DefaultTooltipPayload<TV, TN>[]
+  label?: string | number
+  // Optional formatters (match Recharts signatures loosely)
+  formatter?: (
+    value: TV,
+    name: TN,
+    item: DefaultTooltipPayload<TV, TN>,
+    index: number,
+    payloadItem: any
+  ) => React.ReactNode
+  labelFormatter?: (
+    label: any,
+    items: DefaultTooltipPayload<TV, TN>[]
+  ) => React.ReactNode
+}
+
+//
+// THEME SETUP
+//
 
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: '', dark: '.dark' } as const
@@ -113,6 +136,10 @@ ${colorConfig
   )
 }
 
+//
+// TOOLTIP
+//
+
 const ChartTooltip = RechartsPrimitive.Tooltip
 
 type ExtraTooltipProps = {
@@ -128,7 +155,7 @@ type ExtraTooltipProps = {
 type TooltipPayload = DefaultTooltipPayload<ValueType, NameType>
 
 /**
- * Typed to Recharts' Tooltip content props so TS knows about `payload`, `label`, etc.
+ * Typed with our minimal InternalTooltipProps so TS knows about `payload`, `label`, `active`.
  * We also allow extra UI props (className, etc.).
  */
 function ChartTooltipContent({
@@ -146,7 +173,7 @@ function ChartTooltipContent({
   nameKey,
   labelKey,
   ...rest
-}: Partial<TooltipProps<ValueType, NameType>> &
+}: Partial<InternalTooltipProps<ValueType, NameType>> &
   React.ComponentProps<'div'> &
   ExtraTooltipProps) {
   const { config } = useChart()
@@ -265,6 +292,10 @@ function ChartTooltipContent({
   )
 }
 
+//
+// LEGEND
+//
+
 const ChartLegend = RechartsPrimitive.Legend
 
 function ChartLegendContent({
@@ -319,6 +350,10 @@ function ChartLegendContent({
     </div>
   )
 }
+
+//
+// HELPERS
+//
 
 // Helper to extract item config from a payload.
 function getPayloadConfigFromPayload(
