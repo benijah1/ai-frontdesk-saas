@@ -2,16 +2,22 @@
 
 import * as React from 'react'
 import * as RechartsPrimitive from 'recharts'
+import type { TooltipProps, LegendProps } from 'recharts'
 import type {
-  TooltipProps,
-  ValueType,
   NameType,
-  TooltipPayload,
-  LegendProps,
-  LegendPayload,
-} from 'recharts'
+  ValueType,
+  Payload as DefaultTooltipPayload,
+} from 'recharts/types/component/DefaultTooltipContent'
 
 import { cn } from '@/lib/utils'
+
+// Minimal LegendPayload shape used by this file (covers color/value/dataKey/payload)
+type LegendPayload = {
+  value?: React.ReactNode
+  color?: string
+  dataKey?: string | number
+  payload?: Record<string, unknown>
+}
 
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: '', dark: '.dark' } as const
@@ -117,6 +123,9 @@ type ExtraTooltipProps = {
   color?: string
 }
 
+// Rebuild TooltipPayload from DefaultTooltipContent's generic
+type TooltipPayload = DefaultTooltipPayload<ValueType, NameType>
+
 /**
  * Typed to Recharts' TooltipProps so TS knows about `payload`, `label`, etc.
  * We also allow extra UI props (className, etc.).
@@ -157,7 +166,6 @@ function ChartTooltipContent({
     if (labelFormatter) {
       return (
         <div className={cn('font-medium', labelClassName)}>
-          {/* labelFormatter(label, payload) per Recharts signature */}
           {labelFormatter(computed as any, items)}
         </div>
       )
@@ -198,7 +206,6 @@ function ChartTooltipContent({
               )}
             >
               {formatter && item?.value !== undefined && item.name ? (
-                // formatter(value, name, item, index, payloadItem)
                 formatter(item.value as any, item.name as any, item as any, index, item.payload as any)
               ) : (
                 <>
