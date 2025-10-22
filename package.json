@@ -77,21 +77,15 @@
     "@radix-ui/react-toolbar": "latest",
     "@radix-ui/react-tooltip": "latest",
     "@radix-ui/react-visually-hidden": "latest",
-
-    // Non-Radix helpers shadcn components often import
-    "cmdk": "latest",                    // Command palette
-    "vaul": "latest",                    // Drawer
-    "embla-carousel-react": "latest",    // Carousel
-    "react-day-picker": "latest",        // Calendar
-    "date-fns": "latest",                // Calendar utils
-    "sonner": "latest",                  // Toast (if using <Toaster /> from sonner)
-
-    // Utility libs shadcn templates rely on
+    "cmdk": "latest",     
+    "vaul": "latest", 
+    "embla-carousel-react": "latest",  
+    "react-day-picker": "latest", 
+    "date-fns": "latest",    
+    "sonner": "latest",   
     "class-variance-authority": "latest",
     "tailwind-merge": "latest",
     "clsx": "latest",
-
-    // Already present in your project but listing here for completeness
     "lucide-react": "latest",
     "next-themes": "latest"
   },
