@@ -21,7 +21,7 @@ type LegendPayload = {
 
 // Minimal tooltip props our custom content actually uses.
 // This sidesteps Recharts' version-specific TooltipProps exports.
-type InternalTooltipProps<TV = ValueType, TN = NameType> = {
+type InternalTooltipProps<TV extends ValueType = ValueType, TN extends NameType = NameType> = {
   active?: boolean
   payload?: DefaultTooltipPayload<TV, TN>[]
   label?: string | number
