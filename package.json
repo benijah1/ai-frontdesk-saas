@@ -87,7 +87,8 @@
     "tailwind-merge": "latest",
     "clsx": "latest",
     "lucide-react": "latest",
-    "next-themes": "latest"
+    "next-themes": "latest",
+    "recharts": "latest"
   },
   "devDependencies": {
     "@types/node": "^20.12.7",
