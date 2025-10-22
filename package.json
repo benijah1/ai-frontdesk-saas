@@ -46,6 +46,7 @@
     "@radix-ui/react-tooltip": "latest",
     "@radix-ui/react-avatar": "latest",
     "@radix-ui/react-slot": "latest",
+    "@radix-ui/react-alert-dialog": "latest",
     "next-auth": "^4.24.7"
   },
   "devDependencies": {
