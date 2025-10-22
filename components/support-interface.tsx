@@ -23,7 +23,7 @@ const MarkdownMessage: React.FC<{ text: string; isUser?: boolean }> = ({ text, i
             className="underline"
           />
         ),
-        // ✅ Type relax to accept `inline`
+        // Relax the type for inline code to avoid noisy generics here
         code({ inline, children, ...props }: any) {
           if (inline) {
             return (
@@ -175,11 +175,12 @@ function SupportInterface({ onClose }: SupportInterfaceProps) {
       }
 
       pc.ontrack = async (e) => {
-        if (audioElRef.current) {
-          audioElRef.current.srcObject = e.streams[0]
+        const el = audioElRef.current as unknown as HTMLMediaElement | null
+        if (el) {
+          el.srcObject = e.streams[0]
           // kick playback (helps iOS)
           try {
-            await audioElRef.current.play()
+            await el.play()
           } catch {
             // a secondary user gesture (e.g., tapping End/Start) would also unlock
           }
@@ -274,11 +275,11 @@ function SupportInterface({ onClose }: SupportInterfaceProps) {
         pcRef.current = null
       }
 
-      // detach remote audio
-      if (audioElRef.current) {
+      // detach remote audio (cast to HTMLMediaElement for srcObject)
+      const el = audioElRef.current as unknown as HTMLMediaElement | null
+      if (el) {
         try {
-          // @ts-expect-error: srcObject exists at runtime
-          audioElRef.current.srcObject = null
+          el.srcObject = null
         } catch {}
       }
 
