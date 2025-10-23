@@ -27,6 +27,8 @@ if (process.env.NODE_ENV !== "production") {
 
 /**
  * Helpers to map Prisma entities to NextAuth adapter types.
+ * Note: Some NextAuth versions type AdapterUser.email as `string` (not nullable).
+ * To satisfy both, we return a string fallback ("") when DB email is null.
  */
 function toAdapterUser(u: {
   id: string
@@ -38,10 +40,12 @@ function toAdapterUser(u: {
   return {
     id: u.id,
     name: u.name ?? null,
-    email: u.email ?? null,
+    // If your AdapterUser.email is `string`, this satisfies it.
+    // If it's `string | null`, returning "" is still assignable.
+    email: (u.email ?? "").toLowerCase(),
     emailVerified: u.emailVerified,
     image: u.image ?? null,
-  }
+  } as AdapterUser
 }
 
 function toAdapterAccount(a: {
@@ -99,6 +103,7 @@ export const adapter: Adapter = {
     const created = await prisma.user.create({
       data: {
         name: user.name ?? null,
+        // Store as-is (nullable) in DB; we normalize to string in the mapper.
         email: user.email ? user.email.toLowerCase() : null,
         emailVerified: user.emailVerified ?? null,
         image: user.image ?? null,
@@ -145,7 +150,6 @@ export const adapter: Adapter = {
   },
 
   async deleteUser(userId: string): Promise<void> {
-    // Defensive cleanup — keep if you rely on cascading manually
     await prisma.account.deleteMany({ where: { userId } })
     await prisma.session.deleteMany({ where: { userId } })
     await prisma.user.delete({ where: { id: userId } })
@@ -304,7 +308,7 @@ export const authOptions: NextAuthOptions = {
 
         return {
           id: user.id,
-          email: user.email,
+          email: user.email ?? "", // ensure string for the session token typing
           name: user.name,
           image: user.image,
         }
