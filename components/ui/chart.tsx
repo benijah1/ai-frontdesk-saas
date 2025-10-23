@@ -149,6 +149,7 @@ type ExtraTooltipProps = {
   nameKey?: string
   labelKey?: string
   color?: string
+  labelClassName?: string // <-- added to fix TS error
 }
 
 // Rebuild TooltipPayload from DefaultTooltipContent's generic
