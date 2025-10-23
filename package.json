@@ -48,6 +48,7 @@
     "@radix-ui/react-slot": "latest",
     "@radix-ui/react-alert-dialog": "latest",
     "next-auth": "^4.24.7",
+    "react-resizable-panels": "^2.0.21",
     "@radix-ui/react-accordion": "latest",
     "@radix-ui/react-alert-dialog": "latest",
     "@radix-ui/react-aspect-ratio": "latest",
