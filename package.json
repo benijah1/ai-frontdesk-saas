@@ -88,7 +88,9 @@
     "clsx": "latest",
     "lucide-react": "latest",
     "next-themes": "latest",
-    "recharts": "latest"
+    "recharts": "latest",
+    "react-hook-form": "^7.53.0",
+    "@hookform/resolvers": "^3.9.0"
   },
   "devDependencies": {
     "@types/node": "^20.12.7",
