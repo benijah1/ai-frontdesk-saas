@@ -1,330 +1,367 @@
-"use client"
+"use client";
 
-import type React from "react"
+import { useState, useCallback } from "react";
+import { ArrowRight, CheckCircle2, Phone, Bot, MessageSquare, Shield, Zap, Clock, Headset, Star, Wrench, Building2, Send, CreditCard, ChevronRight, Users } from "lucide-react";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Wrench, Droplets, Thermometer, Star, Shield, Clock, Phone, Users, Award, Zap } from "lucide-react"
-import SupportInterface from "@/components/support-interface"
+export default function Home() {
+  const [email, setEmail] = useState("");
+  const [trade, setTrade] = useState<"General" | "HVAC" | "Plumbing" | "Roofing">("General");
 
-// Loading Screen Component
-function LoadingScreen({ onContinue }: { onContinue: () => void }) {
-  const [currentStep, setCurrentStep] = useState(0)
+  const tradeTagline: Record<typeof trade, string> = {
+    General: "We answer calls, texts, and website chats in seconds, qualify the lead, quote basics, and book the job into your calendar.",
+    HVAC: "We qualify AC/heat issues, collect model photos, suggest windows, and book tune‑ups or diagnostics directly into your calendar.",
+    Plumbing: "We triage leaks/clogs, capture fixture photos, give travel+diag estimates, and book visits into your schedule.",
+    Roofing: "We intake roof size, material, leak photos, storm details, and schedule inspections with homeowner confirmations."
+  } as const;
 
-  useEffect(() => {
-    const steps = [
-      { duration: 800, step: 0 }, // Logo
-      { duration: 600, step: 1 }, // Company name
-      { duration: 700, step: 2 }, // Contact info
-      { duration: 800, step: 3 }, // Reviews/ratings
-      { duration: 900, step: 4 }, // Feature cards
-    ]
-
-    let totalTime = 0
-    steps.forEach(({ duration, step }, index) => {
-      setTimeout(() => {
-        setCurrentStep(step + 1)
-      }, totalTime)
-      totalTime += duration
-    })
-  }, [])
-
-  return (
-    <div className="fixed inset-0 bg-background flex items-center justify-center z-50">
-      <div className="text-center space-y-6 max-w-2xl mx-auto px-4">
-        {/* Logo Animation */}
-        <div
-          className={`transition-all duration-500 ${currentStep >= 1 ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
-        >
-          <div className="bg-gray-100 p-3 rounded-xl shadow-lg mx-auto w-fit">
-            <img
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/design-mode-images/WhatsApp%20Image%202025-05-22%20at%2012_edited%281%29%281%29%281%29%281%29-zlj4KtlkpiSaXWLqG31IiPgg1MhIMs.jpg"
-              alt="Fix It! Home Services Logo"
-              className="rounded-lg h-28 w-28"
-            />
-          </div>
-        </div>
-
-        {/* Company Name Animation */}
-        <div
-          className={`transition-all duration-500 delay-200 ${currentStep >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-        >
-          <h2 className="text-2xl font-bold text-foreground">Fix It! Home Services</h2>
-          <p className="text-muted-foreground">Your Home's Best Friend</p>
-        </div>
-
-        {/* Contact Info Animation */}
-        <div
-          className={`transition-all duration-500 delay-300 ${currentStep >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-        >
-          <div className="text-sm text-muted-foreground space-y-1">
-            <p>
-              License# 948319 • <span className="text-primary">951-525-1848</span>
-            </p>
-            <p>Mon-Fri 7am-5pm • Sat 10am-2pm</p>
-          </div>
-        </div>
-
-        {/* Reviews/Ratings Animation */}
-        <div
-          className={`transition-all duration-500 delay-500 ${currentStep >= 4 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-        >
-          <div className="flex flex-wrap justify-center gap-2 text-sm">
-            <Badge variant="secondary" className="flex items-center space-x-1 px-3 py-1">
-              <Star className="h-4 w-4 text-yellow-500" />
-              <span className="font-semibold">4.9/5</span>
-              <span>from 500+ reviews</span>
-            </Badge>
-            <Badge variant="outline" className="flex items-center space-x-1 px-3 py-1">
-              <Users className="h-4 w-4 text-primary" />
-              <span>12 customers helped today</span>
-            </Badge>
-            <Badge variant="outline" className="flex items-center space-x-1 px-3 py-1">
-              <Zap className="h-4 w-4 text-orange-500" />
-              <span>Same-day service available</span>
-            </Badge>
-          </div>
-        </div>
-
-        {/* Feature Cards Animation */}
-        <div
-          className={`transition-all duration-700 delay-700 ${currentStep >= 5 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-        >
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Card className="text-center p-3 bg-secondary/10 border-secondary/20">
-              <Shield className="h-6 w-6 text-secondary mx-auto mb-1" />
-              <h3 className="font-semibold text-secondary text-sm">Licensed & Insured</h3>
-              <p className="text-xs text-muted-foreground">Fully bonded professionals</p>
-            </Card>
-            <Card className="text-center p-3 bg-primary/10 border-primary/20">
-              <Clock className="h-6 w-6 text-primary mx-auto mb-1" />
-              <h3 className="font-semibold text-primary text-sm">Fast Response</h3>
-              <p className="text-xs text-muted-foreground">Same-day service available</p>
-            </Card>
-            <Card className="text-center p-3 bg-secondary/10 border-secondary/20">
-              <Award className="h-6 w-6 text-secondary mx-auto mb-1" />
-              <h3 className="font-semibold text-secondary text-sm">Award Winning</h3>
-              <p className="text-xs text-muted-foreground">Best contractor 2024</p>
-            </Card>
-            <Card className="text-center p-3 bg-primary/10 border-primary/20">
-              <Phone className="h-6 w-6 text-primary mx-auto mb-1" />
-              <h3 className="font-semibold text-primary text-sm">24/7 Emergency</h3>
-              <p className="text-xs text-muted-foreground">Always here when needed</p>
-            </Card>
-          </div>
-        </div>
-
-        <div
-          className={`transition-all duration-500 delay-1000 ${currentStep >= 5 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-        >
-          <Button variant="destructive" onClick={onContinue} className="mt-6 px-8 py-3 text-lg font-semibold">
-            Get Support 
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// Main Mini-Site Component
-export default function FixItHomeMiniSite() {
-  const [isLoading, setIsLoading] = useState(true)
-  const [selectedServicePage, setSelectedServicePage] = useState<string | null>(null)
-  const [ServicePageComponent, setServicePageComponent] = useState<React.ComponentType<any> | null>(null)
-  const [showSupport, setShowSupport] = useState(false)
-
-  const handleContinue = () => {
-    setIsLoading(false)
-  }
-
-  useEffect(() => {
-    if (selectedServicePage) {
-      const loadServicePage = async () => {
-        try {
-          let module
-          if (selectedServicePage === "bathroom") {
-            module = await import("./services/bathroom/page")
-          } else if (selectedServicePage === "plumbing") {
-            module = await import("./services/plumbing/page")
-          } else if (selectedServicePage === "hvac") {
-            module = await import("./services/hvac/page")
-          }
-
-          if (module) {
-            setServicePageComponent(() => module.default)
-          }
-        } catch (error) {
-          console.error("Failed to load service page:", error)
-          setSelectedServicePage(null)
-        }
-      }
-
-      loadServicePage()
-    } else {
-      setServicePageComponent(null)
+  const features = [
+    {
+      icon: <Phone className="h-6 w-6" aria-hidden />,
+      title: "Instant Call Pick‑Up",
+      desc: "Never miss a call again. We answer in under 2 seconds 24/7 and qualify every lead."
+    },
+    {
+      icon: <MessageSquare className="h-6 w-6" aria-hidden />,
+      title: "Text & Web Chat",
+      desc: "Website chat + SMS so homeowners can reach you however they prefer."
+    },
+    {
+      icon: <Wrench className="h-6 w-6" aria-hidden />,
+      title: "Built for Contractors",
+      desc: "HVAC, Plumbing, Roofing — trained on trades workflows."
+    },
+    {
+      icon: <Zap className="h-6 w-6" aria-hidden />,
+      title: "Booking on Autopilot",
+      desc: "Real‑time scheduling into your calendar or job software, no back‑and‑forth."
+    },
+    {
+      icon: <Shield className="h-6 w-6" aria-hidden />,
+      title: "Call Recording + QA",
+      desc: "Every conversation recorded, summarized, and scored for quality."
+    },
+    {
+      icon: <Clock className="h-6 w-6" aria-hidden />,
+      title: "After‑Hours Coverage",
+      desc: "Nights, weekends, and holidays — we book jobs while your competitors sleep."
     }
-  }, [selectedServicePage])
+  ];
 
-  const services = [
-    {
-      id: "bathroom",
-      title: "Bathroom Remodeling",
-      description: "Transform your bathroom into a spa-like retreat",
-      icon: Droplets,
-      color: "bg-secondary/10 text-secondary border-secondary/20",
-      heroImage: "/modern-luxury-bathroom-renovation-with-marble-tile.png",
-      features: ["Custom Design", "Quality Materials", "Licensed Contractors"],
-    },
-    {
-      id: "plumbing",
-      title: "Plumbing Services",
-      description: "Fast, reliable plumbing solutions when you need them",
-      icon: Wrench,
-      color: "bg-primary/10 text-primary border-primary/20",
-      heroImage: "/professional-plumber-fixing-pipes-emergency-servic.png",
-      features: ["24/7 Emergency", "Licensed Plumbers", "Guaranteed Work"],
-    },
-    {
-      id: "hvac",
-      title: "Heating & AC (HVAC)",
-      description: "Keep your home comfortable year-round",
-      icon: Thermometer,
-      color: "bg-secondary/10 text-secondary border-secondary/20",
-      heroImage: "/hvac-technician-installing-modern-air-conditioning.png",
-      features: ["Energy Efficient", "Certified Technicians", "Warranty Included"],
-    },
-  ]
+  const steps = [
+    { step: "01", title: "Connect Your Number", text: "Port or forward your business line. Keep your number — we do the rest." },
+    { step: "02", title: "Set Your Rules", text: "Service areas, pricing guidance, dispatch windows, emergency rules, upsells." },
+    { step: "03", title: "Start Booking Jobs", text: "We qualify, quote basics, collect photos, and put booked jobs on your calendar." },
+  ];
 
-  if (isLoading) {
-    return <LoadingScreen onContinue={handleContinue} />
-  }
+  const plans = [
+    { name: "Starter", price: "$249", period: "/mo", badge: "Best for solo ops", bullets: ["Up to 200 conversations/mo","1 business line + SMS","Website chat widget","Leads to email + CRM"] },
+    { name: "Pro", price: "$499", period: "/mo", badge: "Most popular", highlight: true, bullets: ["Up to 800 conversations/mo","Booking into Google/Outlook","After‑hours + weekends","Call recording + QA scores"] },
+    { name: "Scale", price: "Custom", period: "", badge: "High‑volume shops", bullets: ["Unlimited conversations","Multi‑location routing","Job‑software integration","Dedicated success manager"] },
+  ];
 
-  if (selectedServicePage && ServicePageComponent) {
-    return <ServicePageComponent onBack={() => setSelectedServicePage(null)} />
-  }
+  const testimonials = [
+    { quote: "We went from missing 30% of calls to booking 18 more jobs in the first month. Nights and Sundays are finally covered.", name: "Maria G.", role: "Owner, BrightFlow Plumbing" },
+    { quote: "AI Front Desk paid for itself in week one. The summaries in our CRM are better than what we used to get from temps.", name: "Derrick T.", role: "GM, Summit Roofing" },
+  ];
 
-  if (selectedServicePage && !ServicePageComponent) {
-    return <LoadingScreen onContinue={handleContinue} />
-  }
+  const scrollTo = useCallback((id: string) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        <div className="space-y-8">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-foreground mb-4">Choose Your Service</h2>
-
-            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-8">
-              <p className="text-sm font-medium text-primary">
-                👆 Click on any service below to explore solutions, get quotes, and connect with our experts
-              </p>
+    <main className="min-h-screen scroll-smooth bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 text-slate-100">
+      {/* Nav */}
+      <header className="sticky top-0 z-50 backdrop-blur supports-[backdrop-filter]:bg-slate-950/70">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between">
+            <a href="/" className="flex items-center gap-2">
+              <Bot className="h-6 w-6" />
+              <span className="font-semibold tracking-tight">AI Front Desk</span>
+            </a>
+            <nav className="hidden md:flex items-center gap-8 text-sm">
+              <button onClick={() => scrollTo("features")} className="hover:text-white/90 focus:outline-none">Features</button>
+              <button onClick={() => scrollTo("how")} className="hover:text-white/90 focus:outline-none">How it works</button>
+              <button onClick={() => scrollTo("pricing")} className="hover:text-white/90 focus:outline-none">Pricing</button>
+              <button onClick={() => scrollTo("faq")} className="hover:text-white/90 focus:outline-none">FAQ</button>
+            </nav>
+            <div className="flex items-center gap-3">
+              <a href="/login" className="rounded-xl border border-white/10 px-4 py-2 text-sm hover:bg-white/5">Sign in</a>
+              <button onClick={() => scrollTo("get-demo")} className="group inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400">
+                Get a Demo <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </button>
             </div>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {services.map((service) => {
-              const IconComponent = service.icon
-              return (
-                <Card
-                  key={service.id}
-                  className="cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-2 hover:bg-card/80 border-2 hover:border-primary/30 group"
-                  onClick={() => setSelectedServicePage(service.id)}
-                >
-                  <CardContent className="p-0">
-                    <div className="relative h-48 overflow-hidden rounded-t-lg">
-                      <img
-                        src={service.heroImage || "/placeholder.svg"}
-                        alt={service.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        onError={(e) => {
-                          e.currentTarget.src =
-                            "/placeholder.svg?height=200&width=300&text=" + encodeURIComponent(service.title)
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                      <div className="absolute top-4 right-4 p-3 rounded-lg bg-gray-100 backdrop-blur-sm shadow-lg group-hover:bg-primary group-hover:text-white transition-colors duration-300">
-                        <IconComponent className="h-6 w-6" />
-                      </div>
-                      <div className="absolute bottom-4 left-4 bg-primary text-white px-3 py-1 rounded-full text-xs font-semibold opacity-90">
-                        Click to Explore →
-                      </div>
-                    </div>
-
-                    <div className="p-6 space-y-4">
-                      <div className="text-center">
-                        <h3 className="text-xl font-semibold text-foreground mb-2 group-hover:text-primary transition-colors duration-300">
-                          {service.title}
-                        </h3>
-                        <p className="text-muted-foreground text-sm mb-4">{service.description}</p>
-
-                        <div className="flex flex-wrap justify-center gap-2 mb-4">
-                          {service.features.map((feature, index) => (
-                            <Badge key={index} variant="outline" className="text-xs group-hover:border-primary/50">
-                              {feature}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
           </div>
         </div>
-      </main>
+      </header>
 
-      <footer className="bg-card border-t border-border mt-12">
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          <div className="text-center space-y-6">
-            <div className="flex justify-center mb-4">
-              <div className="bg-gray-100 p-2 rounded-lg shadow-md">
-                <img
-                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/design-mode-images/WhatsApp%20Image%202025-05-22%20at%2012_edited%281%29%281%29%281%29%281%29-zlj4KtlkpiSaXWLqG31IiPgg1MhIMs.jpg"
-                  alt="Fix It! Home Services Logo"
-                  className="rounded-md w-20 h-20"
-                />
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
+          <div className="grid lg:grid-cols-2 gap-10 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/80">
+                <Star className="h-3.5 w-3.5" />
+                Built for contractors
               </div>
-            </div>
+              <h1 className="mt-4 text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
+                Your 24/7 <span className="text-indigo-400">AI front desk</span> that books jobs — not just messages
+              </h1>
 
-            <div className="bg-primary/5 p-6 rounded-lg">
-              <div className="flex justify-center mb-2">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-4 w-4 text-yellow-500 fill-current" />
+              {/* Trade selector */}
+              <div className="mt-4 flex flex-wrap gap-2">
+                {(["General","HVAC","Plumbing","Roofing"] as const).map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setTrade(t)}
+                    className={`rounded-full border px-3 py-1 text-xs ${trade === t ? "border-indigo-300 bg-indigo-500/20" : "border-white/10 bg-white/5 hover:bg-white/10"}`}
+                  >{t}</button>
                 ))}
               </div>
-              <p className="text-muted-foreground italic mb-2">
-                "Fix It! transformed our bathroom in just 3 weeks. The AI chat helped us plan everything perfectly!"
+
+              <p className="mt-5 text-lg text-white/80">
+                {tradeTagline[trade]}
               </p>
-              <p className="text-sm font-semibold">- Sarah M., Happy Customer</p>
+              <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                <button onClick={() => scrollTo("get-demo")} className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-500 px-5 py-3 font-medium hover:bg-indigo-400">
+                  Book a live demo <CalendarIcon />
+                </button>
+                <button onClick={() => scrollTo("pricing")} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-5 py-3 font-medium hover:bg-white/5">
+                  See pricing <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="mt-6 flex items-center gap-6 text-white/60 text-sm">
+                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /> 2‑second pick‑up</div>
+                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /> After‑hours covered</div>
+                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /> No long contracts</div>
+              </div>
+            </div>
+            <div className="relative">
+              <div className="absolute -inset-10 -z-10 rounded-[40px] bg-indigo-500/20 blur-3xl" />
+              <HeroMockup trade={trade} />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Logos */}
+      <section className="border-t border-white/10 bg-slate-950/40">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+          <p className="text-center text-sm text-white/60">Works with tools you already use</p>
+          <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-6 opacity-80">
+            {["Google Calendar","Outlook","Jobber","ServiceTitan","Housecall Pro","Zapier"].map((name) => (
+              <div key={name} className="flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs">
+                {name}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section id="features" className="relative scroll-mt-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
+          <div className="grid md:grid-cols-3 gap-6">
+            {features.map((f) => (
+              <div key={f.title} className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <div className="inline-flex items-center justify-center rounded-xl bg-white/10 p-2">{f.icon}</div>
+                <h3 className="mt-4 text-lg font-semibold">{f.title}</h3>
+                <p className="mt-2 text-sm text-white/80">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section id="how" className="border-t border-white/10 bg-slate-950/40 scroll-mt-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-3xl font-bold">From call to booked job in minutes</h2>
+            <p className="mt-3 text-white/80">Purpose‑built AI that follows your playbook and routes urgent jobs instantly.</p>
+          </div>
+          <div className="mt-10 grid md:grid-cols-3 gap-6">
+            {steps.map((s) => (
+              <div key={s.step} className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <div className="text-sm text-indigo-300 font-semibold">{s.step}</div>
+                <h3 className="mt-2 text-lg font-semibold">{s.title}</h3>
+                <p className="mt-2 text-sm text-white/80">{s.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="relative">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
+          <div className="grid md:grid-cols-2 gap-6">
+            {testimonials.map((t, i) => (
+              <figure key={i} className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <div className="flex items-center gap-2 text-amber-300">
+                  {Array.from({ length: 5 }).map((_, idx) => (
+                    <Star key={idx} className="h-4 w-4 fill-current" />
+                  ))}
+                </div>
+                <blockquote className="mt-4 text-lg leading-relaxed">“{t.quote}”</blockquote>
+                <figcaption className="mt-4 text-sm text-white/80">{t.name} — {t.role}</figcaption>
+              </figure>
+            ))}
+            <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-indigo-500/20 to-transparent p-6">
+              <h3 className="text-xl font-semibold flex items-center gap-2"><Headset className="h-5 w-5" /> Live transfer when it matters</h3>
+              <p className="mt-2 text-sm text-white/80">Emergency? High‑ticket roof? We detect urgency and warm‑transfer to your on‑call in seconds.</p>
+              <ul className="mt-4 space-y-2 text-sm text-white/80">
+                {["Smart triage & escalation","Photo/video intake via SMS","Detailed CRM notes + call links","Follow‑up reminders if no show"].map((li) => (
+                  <li key={li} className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4" /> {li}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing" className="border-t border-white/10 bg-slate-950/40 scroll-mt-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-3xl font-bold">Simple, clear pricing</h2>
+            <p className="mt-3 text-white/80">Start small. Scale as you grow. No setup fees. Cancel anytime.</p>
+          </div>
+          <div className="mt-10 grid md:grid-cols-3 gap-6">
+            {plans.map((p) => (
+              <div key={p.name} className={"rounded-2xl border p-6 " + (p.highlight ? "border-indigo-400 bg-indigo-500/10" : "border-white/10 bg-white/5") }>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-white/80">{p.badge}</span>
+                  <CreditCard className="h-4 w-4 text-white/60" />
+                </div>
+                <h3 className="mt-2 text-xl font-semibold">{p.name}</h3>
+                <div className="mt-3 flex items-end gap-1">
+                  <span className="text-4xl font-extrabold">{p.price}</span>
+                  <span className="mb-1 text-white/70">{p.period}</span>
+                </div>
+                <ul className="mt-4 space-y-2 text-sm text-white/80">
+                  {p.bullets.map((b) => (
+                    <li key={b} className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4" /> {b}</li>
+                  ))}
+                </ul>
+                <button onClick={() => scrollTo("get-demo")} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 font-medium hover:bg-indigo-400">
+                  Choose {p.name}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Lead Capture + FAQ */}
+      <section id="get-demo" className="relative scroll-mt-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
+          <div className="grid lg:grid-cols-2 gap-8 items-start">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <h3 className="text-2xl font-bold">See it book a job in real time</h3>
+              <p className="mt-2 text-white/80">Enter your email and we’ll send a 3‑minute interactive demo.</p>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  alert(`Thanks! We\'ll send a demo link to ${email}.`);
+                }}
+                className="mt-4 flex flex-col sm:flex-row gap-3"
+              >
+                <label htmlFor="email" className="sr-only">Email</label>
+                <input
+                  id="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  className="flex-1 rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 outline-none ring-0 placeholder:text-white/50"
+                />
+                <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-500 px-5 py-3 font-medium hover:bg-indigo-400">
+                  Send demo <Send className="h-4 w-4" />
+                </button>
+              </form>
+              <p className="mt-3 text-xs text-white/60 flex items-center gap-2"><Shield className="h-3.5 w-3.5" />We never share your info.</p>
             </div>
 
-            <div className="text-sm text-muted-foreground">
-              <p className="font-semibold">© 2025 Fix It! Home Services</p>
-              <p>Licensed, Bonded & Insured • Available 24/7 for Emergencies</p>
-              <p>
-                License# 948319 •{" "}
-                <a href="mailto:fixithomeservices472@gmail.com" className="text-primary hover:underline">
-                  fixithomeservices472@gmail.com
-                </a>{" "}
-                •{" "}
-                <a href="tel:951-525-1848" className="text-primary hover:underline">
-                  951-525-1848
-                </a>
-              </p>
-              <p className="mt-2">
-                <a href="/crm" className="text-xs text-muted-foreground hover:text-primary underline">
-                  Staff Portal
-                </a>
-              </p>
+            <div id="faq" className="rounded-2xl border border-white/10 bg-white/5 p-6 scroll-mt-24">
+              <h3 className="text-2xl font-bold flex items-center gap-2"><Users className="h-5 w-5" /> Frequently asked</h3>
+              <ul className="mt-4 space-y-4">
+                {[{q:"Will it sound like a robot?",a:"No. It uses natural prosody and trades vocabulary. Most callers assume it’s a friendly dispatcher."},{q:"How do bookings appear?",a:"Events land on your calendar with full notes, call link, photos, and homeowner contact details."},{q:"Can I keep my number?",a:"Yes. We can port or simply forward — your number stays the same."},{q:"What about emergencies?",a:"You set rules. We escalate and live‑transfer to on‑call when certain keywords or conditions are met."}].map((item) => (
+                  <li key={item.q} className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+                    <div className="font-medium">{item.q}</div>
+                    <p className="mt-1 text-sm text-white/80">{item.a}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-white/10">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 text-sm text-white/70">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Bot className="h-5 w-5" />
+              <span>AI Front Desk</span>
+              <span className="mx-2 opacity-50">•</span>
+              <span>Made for contractors</span>
+            </div>
+            <div className="flex items-center gap-6">
+              <button onClick={() => scrollTo("pricing")} className="hover:text-white">Pricing</button>
+              <button onClick={() => scrollTo("features")} className="hover:text-white">Features</button>
+              <a href="/login" className="hover:text-white">Sign in</a>
             </div>
           </div>
         </div>
       </footer>
+    </main>
+  );
+}
 
-      {showSupport && <SupportInterface onClose={() => setShowSupport(false)} />}
+function CalendarIcon() {
+  return <span className="inline-flex items-center gap-2"><Building2 className="h-4 w-4" /> </span>;
+}
+
+function HeroMockup({ trade }: { trade: "General" | "HVAC" | "Plumbing" | "Roofing" }) {
+  const firstLine = trade === "HVAC" ? "Homeowner: “AC stopped cooling and it’s 88°F.”" : trade === "Plumbing" ? "Homeowner: “There’s a leak under the kitchen sink.”" : trade === "Roofing" ? "Homeowner: “Ceiling stain after last night’s storm.”" : "Homeowner: “I need a service appointment.”";
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 p-6 shadow-2xl">
+      <div className="flex items-center gap-3">
+        <div className="h-3 w-3 rounded-full bg-rose-400" />
+        <div className="h-3 w-3 rounded-full bg-amber-300" />
+        <div className="h-3 w-3 rounded-full bg-emerald-400" />
+      </div>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
+          <div className="text-sm font-semibold flex items-center gap-2"><Phone className="h-4 w-4" /> Incoming Call</div>
+          <p className="mt-2 text-sm text-white/80">{firstLine}</p>
+          <div className="mt-3 rounded-lg bg-white/5 p-3 text-xs text-white/80">
+            AI: “I can help. Are you seeing any error codes or active leaks?”
+          </div>
+          <div className="mt-2 rounded-lg bg-white/5 p-3 text-xs text-white/80">
+            AI: “I have a technician available tomorrow 8–12 or 12–4. What works?”
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
+          <div className="text-sm font-semibold flex items-center gap-2"><CalendarGlyph /> Booking Created</div>
+          <ul className="mt-3 space-y-2 text-sm text-white/80">
+            <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4" /> Calendar event with notes</li>
+            <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4" /> SMS confirmation to homeowner</li>
+            <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4" /> Job details synced to your CRM</li>
+          </ul>
+        </div>
+      </div>
     </div>
-  )
+  );
+}
+
+function CalendarGlyph() {
+  return <span className="inline-flex items-center gap-2"><CalendarIconDot /> <span>AI Calendar</span></span>;
+}
+
+function CalendarIconDot() {
+  return <div className="h-4 w-4 rounded-md border border-white/20" />;
 }
