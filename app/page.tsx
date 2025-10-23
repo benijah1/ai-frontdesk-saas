@@ -366,11 +366,12 @@ export default function Home() {
 }
 
 function CalendarIcon() {
-  return <span className="inline-flex items-center gap-2"><Building2 className="h-4 w-4" /> </span>;
-}() {
-  return <span className="inline-flex items-center gap-2"><Building2 className="h-4 w-4" /> </span>;
+  return (
+    <span className="inline-flex items-center gap-2">
+      <Building2 className="h-4 w-4" />
+    </span>
+  );
 }
-
 function HeroMockup({ trade }: { trade: "General" | "HVAC" | "Plumbing" | "Roofing" }) {
   const firstLine = trade === "HVAC" ? "Homeowner: “AC stopped cooling and it’s 88°F.”" : trade === "Plumbing" ? "Homeowner: “There’s a leak under the kitchen sink.”" : trade === "Roofing" ? "Homeowner: “Ceiling stain after last night’s storm.”" : "Homeowner: “I need a service appointment.”";
   return (
