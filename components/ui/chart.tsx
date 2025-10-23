@@ -2,7 +2,6 @@
 
 import * as React from 'react'
 import * as RechartsPrimitive from 'recharts'
-import type { LegendProps } from 'recharts'
 import type {
   NameType,
   ValueType,
@@ -21,7 +20,10 @@ type LegendPayload = {
 
 // Minimal tooltip props our custom content actually uses.
 // This sidesteps Recharts' version-specific TooltipProps exports.
-type InternalTooltipProps<TV extends ValueType = ValueType, TN extends NameType = NameType> = {
+type InternalTooltipProps<
+  TV extends ValueType = ValueType,
+  TN extends NameType = NameType
+> = {
   active?: boolean
   payload?: DefaultTooltipPayload<TV, TN>[]
   label?: string | number
@@ -149,7 +151,7 @@ type ExtraTooltipProps = {
   nameKey?: string
   labelKey?: string
   color?: string
-  labelClassName?: string // <-- added to fix TS error
+  labelClassName?: string
 }
 
 // Rebuild TooltipPayload from DefaultTooltipContent's generic
@@ -306,11 +308,12 @@ function ChartLegendContent({
   verticalAlign = 'bottom',
   nameKey,
   ...rest
-}: React.ComponentProps<'div'> &
-  Pick<LegendProps, 'payload' | 'verticalAlign'> & {
-    hideIcon?: boolean
-    nameKey?: string
-  }) {
+}: React.ComponentProps<'div'> & {
+  payload?: LegendPayload[]
+  verticalAlign?: 'top' | 'middle' | 'bottom'
+  hideIcon?: boolean
+  nameKey?: string
+}) {
   const { config } = useChart()
 
   const items = payload as LegendPayload[] | undefined
