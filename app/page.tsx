@@ -5,53 +5,83 @@ import { ArrowRight, CheckCircle2, Phone, Bot, MessageSquare, Shield, Zap, Clock
 
 export default function Home() {
   const [email, setEmail] = useState("");
-  const [trade, setTrade] = useState<"General" | "HVAC" | "Plumbing" | "Roofing">("General");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitMsg, setSubmitMsg] = useState<string | null>(null);
+  const [trade, setTrade] = useState<"General" | "HVAC" | "Plumbing" | "Roofing" | "Electrical" | "Solar">("General");
 
   const tradeTagline: Record<typeof trade, string> = {
     General: "We answer calls, texts, and website chats in seconds, qualify the lead, quote basics, and book the job into your calendar.",
     HVAC: "We qualify AC/heat issues, collect model photos, suggest windows, and book tune‑ups or diagnostics directly into your calendar.",
     Plumbing: "We triage leaks/clogs, capture fixture photos, give travel+diag estimates, and book visits into your schedule.",
-    Roofing: "We intake roof size, material, leak photos, storm details, and schedule inspections with homeowner confirmations."
+    Roofing: "We intake roof size, material, leak photos, storm details, and schedule inspections with homeowner confirmations.",
+    Electrical: "We scope panels/outlet counts, detect emergencies, and schedule estimates or same‑day dispatch when needed.",
+    Solar: "We pre‑qualify usage, roof fit, shade, and incentives, then schedule a design consult without back‑and‑forth."
   } as const;
 
-  const features = [
-    {
-      icon: <Phone className="h-6 w-6" aria-hidden />,
-      title: "Instant Call Pick‑Up",
-      desc: "Never miss a call again. We answer in under 2 seconds 24/7 and qualify every lead."
-    },
-    {
-      icon: <MessageSquare className="h-6 w-6" aria-hidden />,
-      title: "Text & Web Chat",
-      desc: "Website chat + SMS so homeowners can reach you however they prefer."
-    },
-    {
-      icon: <Wrench className="h-6 w-6" aria-hidden />,
-      title: "Built for Contractors",
-      desc: "HVAC, Plumbing, Roofing — trained on trades workflows."
-    },
-    {
-      icon: <Zap className="h-6 w-6" aria-hidden />,
-      title: "Booking on Autopilot",
-      desc: "Real‑time scheduling into your calendar or job software, no back‑and‑forth."
-    },
-    {
-      icon: <Shield className="h-6 w-6" aria-hidden />,
-      title: "Call Recording + QA",
-      desc: "Every conversation recorded, summarized, and scored for quality."
-    },
-    {
-      icon: <Clock className="h-6 w-6" aria-hidden />,
-      title: "After‑Hours Coverage",
-      desc: "Nights, weekends, and holidays — we book jobs while your competitors sleep."
-    }
+  const baseFeatures = [
+    { icon: <Phone className="h-6 w-6" />, title: "Instant Call Pick‑Up", desc: "Never miss a call again. We answer in under 2 seconds 24/7 and qualify every lead." },
+    { icon: <MessageSquare className="h-6 w-6" />, title: "Text & Web Chat", desc: "Website chat + SMS so homeowners can reach you however they prefer." },
+    { icon: <Zap className="h-6 w-6" />, title: "Booking on Autopilot", desc: "Real‑time scheduling into your calendar or job software, no back‑and‑forth." },
+    { icon: <Shield className="h-6 w-6" />, title: "Call Recording + QA", desc: "Every conversation recorded, summarized, and scored for quality." },
+    { icon: <Clock className="h-6 w-6" />, title: "After‑Hours Coverage", desc: "Nights, weekends, and holidays — we book jobs while your competitors sleep." }
   ];
 
-  const steps = [
-    { step: "01", title: "Connect Your Number", text: "Port or forward your business line. Keep your number — we do the rest." },
-    { step: "02", title: "Set Your Rules", text: "Service areas, pricing guidance, dispatch windows, emergency rules, upsells." },
-    { step: "03", title: "Start Booking Jobs", text: "We qualify, quote basics, collect photos, and put booked jobs on your calendar." },
-  ];
+  const tradeFeatures: Record<typeof trade, { title: string; desc: string }[]> = {
+    General: [{ title: "Built for Contractors", desc: "HVAC, Plumbing, Roofing, Electrical, Solar — trained on trades workflows." }],
+    HVAC: [
+      { title: "HVAC Intake", desc: "SEER/tonnage prompts, thermostat codes, filter size, photos of nameplate." },
+      { title: "Seasonal Upsells", desc: "Tune‑ups, IAQ add‑ons, and club memberships offered naturally." }
+    ],
+    Plumbing: [
+      { title: "Plumbing Triage", desc: "Leak/backup categorization, shutoff instructions, fixture photos via SMS." },
+      { title: "Upfront Expectations", desc: "Travel + diagnostic explained; optional ballpark for common jobs." }
+    ],
+    Roofing: [
+      { title: "Storm & Leak Scripts", desc: "Wind/hail qualifiers, emergency tarping, interior damage photos." },
+      { title: "Insurance Friendly", desc: "Captures claim details and schedules inspection windows." }
+    ],
+    Electrical: [
+      { title: "Safety First", desc: "Smell of burning, tripping breakers, partial power — auto‑escalate rules." },
+      { title: "Scope Capture", desc: "Outlet counts, panel brand/amp, EV charger distance and photos." }
+    ],
+    Solar: [
+      { title: "Pre‑Qual Engine", desc: "Bill amount, roof orientation, shade, HOAs — all captured up front." },
+      { title: "Incentive Aware", desc: "Prompts homeowners to provide utility and tax‑credit basics." }
+    ]
+  } as const;
+
+  const stepsByTrade: Record<typeof trade, { step: string; title: string; text: string }[]> = {
+    General: [
+      { step: "01", title: "Connect Your Number", text: "Port or forward your business line. Keep your number — we do the rest." },
+      { step: "02", title: "Set Your Rules", text: "Service areas, pricing guidance, dispatch windows, emergency rules, upsells." },
+      { step: "03", title: "Start Booking Jobs", text: "We qualify, quote basics, collect photos, and put booked jobs on your calendar." }
+    ],
+    HVAC: [
+      { step: "01", title: "Forward or Port Line", text: "Keep your number; we answer in under 2 seconds." },
+      { step: "02", title: "HVAC Playbook", text: "Diagnostics price, service windows, membership offers, upsell rules." },
+      { step: "03", title: "Book & Confirm", text: "We schedule, send SMS/email confirmations, and log notes + photos to your CRM." }
+    ],
+    Plumbing: [
+      { step: "01", title: "Forward or Port Line", text: "24/7 coverage with emergency routing if needed." },
+      { step: "02", title: "Plumbing Playbook", text: "Travel/diag, weekend rules, camera/jetting upsells, warranty language." },
+      { step: "03", title: "Book & Confirm", text: "Homeowner gets SMS confirm; CSR‑quality notes saved to your system." }
+    ],
+    Roofing: [
+      { step: "01", title: "Line Connected", text: "We catch storm‑surge calls and off‑hour leads." },
+      { step: "02", title: "Roofing Playbook", text: "Leak/emergency logic, inspection durations, insurance data capture." },
+      { step: "03", title: "Inspection Scheduled", text: "Calendar event + photo links + claim notes for your estimator." }
+    ],
+    Electrical: [
+      { step: "01", title: "Connect Your Number", text: "Immediate answer; emergencies escalate to on‑call." },
+      { step: "02", title: "Electrical Playbook", text: "Panel work rules, permit lead times, safety guidance copy." },
+      { step: "03", title: "Dispatch & Notify", text: "We book, notify tech, and capture before/after photos when available." }
+    ],
+    Solar: [
+      { step: "01", title: "Numbers Connected", text: "We capture inquiries from phone, SMS, and web chat." },
+      { step: "02", title: "Solar Playbook", text: "Bill + usage, roof data, credit pre‑qual prompts, design consult rules." },
+      { step: "03", title: "Consult Booked", text: "Calendar block with all pre‑qual data attached to the event/CRM." }
+    ]
+  } as const;
 
   const plans = [
     { name: "Starter", price: "$249", period: "/mo", badge: "Best for solo ops", bullets: ["Up to 200 conversations/mo","1 business line + SMS","Website chat widget","Leads to email + CRM"] },
@@ -68,6 +98,33 @@ export default function Home() {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSubmitting(true);
+    setSubmitMsg(null);
+    try {
+      // Change this to your actual API route or external CRM webhook
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, trade, source: "home", page: "landing", ts: Date.now() })
+      });
+      if (!res.ok) throw new Error(`Bad status ${res.status}`);
+      setSubmitMsg("Thanks! Check your inbox for your demo link.");
+      setEmail("");
+    } catch (err) {
+      setSubmitMsg("Something went wrong. Please try again or email hello@reachsmart.ai.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const dynamicFeatures = [
+    ...baseFeatures.slice(0, 2),
+    ...(trade === "General" ? tradeFeatures.General : [{ title: tradeFeatures[trade][0].title, desc: tradeFeatures[trade][0].desc }]),
+    ...baseFeatures.slice(2),
+  ];
 
   return (
     <main className="min-h-screen scroll-smooth bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 text-slate-100">
@@ -110,7 +167,7 @@ export default function Home() {
 
               {/* Trade selector */}
               <div className="mt-4 flex flex-wrap gap-2">
-                {(["General","HVAC","Plumbing","Roofing"] as const).map(t => (
+                {(["General","HVAC","Plumbing","Roofing","Electrical","Solar"] as const).map(t => (
                   <button
                     key={t}
                     onClick={() => setTrade(t)}
@@ -162,9 +219,9 @@ export default function Home() {
       <section id="features" className="relative scroll-mt-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
           <div className="grid md:grid-cols-3 gap-6">
-            {features.map((f) => (
+            {dynamicFeatures.map((f) => (
               <div key={f.title} className="rounded-2xl border border-white/10 bg-white/5 p-6">
-                <div className="inline-flex items-center justify-center rounded-xl bg-white/10 p-2">{f.icon}</div>
+                <div className="inline-flex items-center justify-center rounded-xl bg-white/10 p-2">{"icon" in f ? (f as any).icon : <Wrench className="h-6 w-6" />}</div>
                 <h3 className="mt-4 text-lg font-semibold">{f.title}</h3>
                 <p className="mt-2 text-sm text-white/80">{f.desc}</p>
               </div>
@@ -181,7 +238,7 @@ export default function Home() {
             <p className="mt-3 text-white/80">Purpose‑built AI that follows your playbook and routes urgent jobs instantly.</p>
           </div>
           <div className="mt-10 grid md:grid-cols-3 gap-6">
-            {steps.map((s) => (
+            {stepsByTrade[trade].map((s) => (
               <div key={s.step} className="rounded-2xl border border-white/10 bg-white/5 p-6">
                 <div className="text-sm text-indigo-300 font-semibold">{s.step}</div>
                 <h3 className="mt-2 text-lg font-semibold">{s.title}</h3>
@@ -260,27 +317,14 @@ export default function Home() {
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
               <h3 className="text-2xl font-bold">See it book a job in real time</h3>
               <p className="mt-2 text-white/80">Enter your email and we’ll send a 3‑minute interactive demo.</p>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  alert(`Thanks! We\'ll send a demo link to ${email}.`);
-                }}
-                className="mt-4 flex flex-col sm:flex-row gap-3"
-              >
+              <form onSubmit={handleSubmit} className="mt-4 flex flex-col sm:flex-row gap-3">
                 <label htmlFor="email" className="sr-only">Email</label>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@company.com"
-                  className="flex-1 rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 outline-none ring-0 placeholder:text-white/50"
-                />
-                <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-500 px-5 py-3 font-medium hover:bg-indigo-400">
-                  Send demo <Send className="h-4 w-4" />
+                <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" className="flex-1 rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 outline-none ring-0 placeholder:text-white/50" />
+                <button type="submit" disabled={submitting} className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-500 px-5 py-3 font-medium hover:bg-indigo-400 disabled:opacity-60">
+                  {submitting ? "Sending…" : "Send demo"} <Send className="h-4 w-4" />
                 </button>
               </form>
+              {submitMsg && <p className="mt-3 text-sm text-white/80">{submitMsg}</p>}
               <p className="mt-3 text-xs text-white/60 flex items-center gap-2"><Shield className="h-3.5 w-3.5" />We never share your info.</p>
             </div>
 
@@ -322,6 +366,8 @@ export default function Home() {
 }
 
 function CalendarIcon() {
+  return <span className="inline-flex items-center gap-2"><Building2 className="h-4 w-4" /> </span>;
+}() {
   return <span className="inline-flex items-center gap-2"><Building2 className="h-4 w-4" /> </span>;
 }
 
