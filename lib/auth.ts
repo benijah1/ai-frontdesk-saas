@@ -1,123 +1,73 @@
-// lib/auth.ts
+// lib/auth.ts (sessions section — drop-in replacement)
 
-import NextAuth, { type NextAuthOptions } from "next-auth";
-import Credentials from "next-auth/providers/credentials";
-import type { Adapter } from "next-auth/adapters";
-import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
-import type { Prisma } from "@prisma/client";
+import type { Adapter, AdapterSession } from "next-auth/adapters"
+import { PrismaClient } from "@prisma/client"
 
-const PrismaCredentialsAdapter: Adapter = {
-  // Users
-  async createUser(data: Prisma.UserCreateInput) {
-    return prisma.user.create({ data }) as unknown as any;
-  },
-  async getUser(id: string) {
-    return prisma.user.findUnique({ where: { id } }) as unknown as any;
-  },
-  async getUserByEmail(email: string) {
-    return prisma.user.findUnique({ where: { email } }) as unknown as any;
-  },
-  async getUserByAccount() {
-    // Not used for Credentials-only auth (no OAuth accounts)
-    return null;
-  },
-  async updateUser(data: Prisma.UserUpdateInput & { id: string }) {
-    const { id, ...rest } = data as any;
-    return prisma.user.update({ where: { id }, data: rest }) as unknown as any;
-  },
-  async deleteUser(id: string) {
-    await prisma.user.delete({ where: { id } });
-    return undefined as unknown as any;
-  },
+const prisma = new PrismaClient()
 
-  // Accounts (OAuth) — not used in Credentials flow; no-ops
-  async linkAccount() {
-    return undefined as unknown as any;
-  },
-  async unlinkAccount() {
-    return undefined as unknown as any;
-  },
+export const adapter: Adapter = {
+  // ... keep your existing user/account methods here ...
 
   // Sessions
-  async createSession(data: Prisma.SessionCreateInput) {
-    return prisma.session.create({ data }) as unknown as any;
+  async createSession(session: { sessionToken: string; userId: string; expires: Date }): Promise<AdapterSession> {
+    const s = await prisma.session.create({
+      data: {
+        sessionToken: session.sessionToken,
+        userId: session.userId,
+        expires: session.expires,
+      },
+    })
+    // Return shape must satisfy AdapterSession
+    return {
+      sessionToken: s.sessionToken,
+      userId: s.userId,
+      expires: s.expires,
+    }
   },
+
   async getSessionAndUser(sessionToken: string) {
-    const session = await prisma.session.findUnique({ where: { sessionToken } });
-    if (!session) return null as unknown as any;
-    const user = await prisma.user.findUnique({ where: { id: session.userId } });
-    if (!user) return null as unknown as any;
-    return { session, user } as unknown as any;
-  },
-  async updateSession(
-    data: Prisma.SessionUpdateInput & { sessionToken: string }
-  ) {
-    const { sessionToken, ...rest } = data as any;
-    return prisma.session.update({ where: { sessionToken }, data: rest }) as unknown as any;
-  },
-  async deleteSession(sessionToken: string) {
-    await prisma.session.delete({ where: { sessionToken } });
-    return undefined as unknown as any;
-  },
-
-  // Email verification (not used; you can wire these if you add Email provider)
-  async createVerificationToken() {
-    throw new Error("createVerificationToken not implemented");
-  },
-  async useVerificationToken() {
-    throw new Error("useVerificationToken not implemented");
-  },
-
-  // Optional account helpers (not used)
-  async getAccount() {
-    return null as unknown as any;
-  },
-  async updateAccount() {
-    return null as unknown as any;
-  },
-};
-
-export const authOptions: NextAuthOptions = {
-  adapter: PrismaCredentialsAdapter,
-  session: {
-    strategy: "database",
-  },
-  providers: [
-    Credentials({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+    const s = await prisma.session.findUnique({
+      where: { sessionToken },
+      include: { user: true },
+    })
+    if (!s) return null
+    const { user, ...sess } = s
+    return {
+      session: {
+        sessionToken: sess.sessionToken,
+        userId: sess.userId,
+        expires: sess.expires,
       },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
-
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-          select: { id: true, email: true, name: true, password: true },
-        });
-        if (!user || !user.password) return null;
-
-        const valid = await bcrypt.compare(credentials.password, user.password);
-        if (!valid) return null;
-
-        return { id: user.id, email: user.email, name: user.name ?? undefined };
-      },
-    }),
-  ],
-  pages: {
-    signIn: "/sign-in",
+      user, // Prisma User maps 1:1 to AdapterUser for common fields
+    }
   },
-  callbacks: {
-    async session({ session, token, user }) {
-      if (session.user) {
-        (session.user as any).id =
-          (user as any)?.id ?? token?.sub ?? (session as any)?.user?.id;
+
+  async updateSession(session: Partial<AdapterSession> & { sessionToken: string }): Promise<AdapterSession | null> {
+    // Only update allowed fields; sessionToken is the identifier
+    try {
+      const s = await prisma.session.update({
+        where: { sessionToken: session.sessionToken },
+        data: {
+          // Only update if provided
+          expires: session.expires,
+          // userId is rarely changed; omit unless you explicitly support it
+        },
+      })
+      return {
+        sessionToken: s.sessionToken,
+        userId: s.userId,
+        expires: s.expires,
       }
-      return session;
-    },
+    } catch {
+      return null
+    }
   },
-};
 
-export const { auth } = NextAuth(authOptions);
+  async deleteSession(sessionToken: string): Promise<void> {
+    // Use deleteMany to be tolerant if it doesn't exist
+    await prisma.session.deleteMany({ where: { sessionToken } })
+  },
+
+  // If your Adapter interface requires the rest, keep your existing implementations:
+  // createUser, getUser, getUserByEmail, getUserByAccount, updateUser, linkAccount, unlinkAccount, etc.
+}
