@@ -9,6 +9,12 @@ import type { AdapterAccount } from "next-auth/adapters"
 import { prisma } from "@/lib/prisma"
 import { compare } from "bcryptjs"
 
+// lib/auth.ts
+import NextAuth from "next-auth";
+import { authConfig } from "./auth.config";
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
