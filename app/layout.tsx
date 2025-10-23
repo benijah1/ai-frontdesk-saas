@@ -1,18 +1,21 @@
-import type { Metadata } from "next"
+// app/layout.tsx
 import "./globals.css"
-import Navbar from "@/components/Navbar" // <-- Navbar is default-exported from components/Navbar.tsx
+import type { Metadata } from "next"
+import { SiteHeader } from "@/components/site-header" // or whatever your header is named
+import { SiteFooter } from "@/components/site-footer" // optional
 
 export const metadata: Metadata = {
   title: "AI Front Desk",
-  description: "Spin up your AI front desk in minutes.",
+  description: "Your 24/7 AI front desk for contractors",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>
-        <Navbar />
-        <main className="container">{children}</main>
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen bg-[#0A0B10] text-white antialiased overflow-x-hidden">
+        <SiteHeader />
+        <main>{children}</main>
+        {/* <SiteFooter /> */}
       </body>
     </html>
   )
