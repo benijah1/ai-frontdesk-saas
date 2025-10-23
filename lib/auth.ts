@@ -7,10 +7,12 @@ import type {
   AdapterSession,
   VerificationToken,
 } from "next-auth/adapters"
+import type { NextAuthOptions } from "next-auth"
+import CredentialsProvider from "next-auth/providers/credentials"
 import { PrismaClient } from "@prisma/client"
 
 /**
- * Prisma singleton (avoids creating multiple clients in dev/hot-reload)
+ * Prisma singleton to avoid multiple instances during dev/hot reload.
  */
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
 export const prisma =
@@ -24,7 +26,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 /**
- * Helper mappers (most Prisma <-> Adapter types align 1:1)
+ * Helpers to map Prisma entities to NextAuth adapter types.
  */
 function toAdapterUser(u: any): AdapterUser {
   return {
@@ -64,12 +66,9 @@ function toAdapterSession(s: any): AdapterSession {
 }
 
 /**
- * Fully implemented NextAuth Adapter using Prisma
+ * Fully implemented custom NextAuth Adapter using Prisma.
  */
 export const adapter: Adapter = {
-  /**
-   * Users
-   */
   async createUser(user) {
     const created = await prisma.user.create({
       data: {
@@ -121,15 +120,11 @@ export const adapter: Adapter = {
   },
 
   async deleteUser(userId) {
-    // Important: Also clean up relations to avoid orphaned rows in strict schemas
     await prisma.account.deleteMany({ where: { userId } })
     await prisma.session.deleteMany({ where: { userId } })
     await prisma.user.delete({ where: { id: userId } })
   },
 
-  /**
-   * Accounts
-   */
   async linkAccount(account) {
     const created = await prisma.account.create({
       data: {
@@ -162,10 +157,6 @@ export const adapter: Adapter = {
     })
   },
 
-  /**
-   * Sessions
-   * These signatures must match NextAuth's expectations.
-   */
   async createSession(session: { sessionToken: string; userId: string; expires: Date }): Promise<AdapterSession> {
     const s = await prisma.session.create({
       data: {
@@ -196,7 +187,6 @@ export const adapter: Adapter = {
       const s = await prisma.session.update({
         where: { sessionToken: session.sessionToken },
         data: {
-          // Only update provided fields; sessionToken is the identifier
           expires: session.expires ?? undefined,
           userId: session.userId ?? undefined,
         },
@@ -211,9 +201,6 @@ export const adapter: Adapter = {
     await prisma.session.deleteMany({ where: { sessionToken } })
   },
 
-  /**
-   * Email/OTP (verification tokens)
-   */
   async createVerificationToken(token: VerificationToken): Promise<VerificationToken> {
     const created = await prisma.verificationToken.create({
       data: {
@@ -229,10 +216,7 @@ export const adapter: Adapter = {
     }
   },
 
-  async useVerificationToken(params: {
-    identifier: string
-    token: string
-  }): Promise<VerificationToken | null> {
+  async useVerificationToken(params: { identifier: string; token: string }): Promise<VerificationToken | null> {
     try {
       const deleted = await prisma.verificationToken.delete({
         where: {
@@ -245,10 +229,57 @@ export const adapter: Adapter = {
         expires: deleted.expires,
       }
     } catch {
-      // If not found, return null (per NextAuth contract)
       return null
     }
   },
 }
 
-export default adapter
+/**
+ * NextAuth options used by getServerSession in app/dashboard/page.tsx.
+ * Includes a Credentials provider for basic email-only sign-in during development.
+ * Replace or extend providers as needed for your project.
+ */
+export const authOptions: NextAuthOptions = {
+  adapter,
+  session: {
+    strategy: "database",
+  },
+  secret: process.env.NEXTAUTH_SECRET,
+  providers: [
+    CredentialsProvider({
+      name: "Email Only",
+      credentials: {
+        email: { label: "Email", type: "text" },
+        name: { label: "Name", type: "text" },
+      },
+      async authorize(credentials) {
+        const email = (credentials?.email ?? "").toString().trim().toLowerCase()
+        const displayName = (credentials?.name ?? "").toString().trim() || null
+        if (!email) return null
+        let user = await prisma.user.findUnique({ where: { email } })
+        if (!user) {
+          user = await prisma.user.create({
+            data: {
+              email,
+              name: displayName,
+            },
+          })
+        } else if (displayName && user.name !== displayName) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: { name: displayName },
+          })
+        }
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+        }
+      },
+    }),
+  ],
+  pages: {},
+}
+
+export default authOptions
