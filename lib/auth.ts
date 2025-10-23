@@ -1,5 +1,6 @@
 // lib/auth.ts
 
+import { PrismaClient } from "@prisma/client"
 import type {
   Adapter,
   AdapterUser,
@@ -9,7 +10,6 @@ import type {
 } from "next-auth/adapters"
 import type { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { PrismaClient } from "@prisma/client"
 
 /**
  * Prisma singleton to avoid multiple instances during dev/hot reload.
@@ -28,7 +28,13 @@ if (process.env.NODE_ENV !== "production") {
 /**
  * Helpers to map Prisma entities to NextAuth adapter types.
  */
-function toAdapterUser(u: any): AdapterUser {
+function toAdapterUser(u: {
+  id: string
+  name: string | null
+  email: string | null
+  emailVerified: Date | null
+  image: string | null
+}): AdapterUser {
   return {
     id: u.id,
     name: u.name ?? null,
@@ -38,7 +44,22 @@ function toAdapterUser(u: any): AdapterUser {
   }
 }
 
-function toAdapterAccount(a: any): AdapterAccount {
+function toAdapterAccount(a: {
+  id: string
+  userId: string
+  type: string
+  provider: string
+  providerAccountId: string
+  refresh_token: string | null
+  access_token: string | null
+  expires_at: number | null
+  token_type: string | null
+  scope: string | null
+  id_token: string | null
+  session_state: string | null
+  oauth_token_secret: string | null
+  oauth_token: string | null
+}): AdapterAccount {
   return {
     id: a.id,
     userId: a.userId,
@@ -57,7 +78,11 @@ function toAdapterAccount(a: any): AdapterAccount {
   }
 }
 
-function toAdapterSession(s: any): AdapterSession {
+function toAdapterSession(s: {
+  sessionToken: string
+  userId: string
+  expires: Date
+}): AdapterSession {
   return {
     sessionToken: s.sessionToken,
     userId: s.userId,
@@ -66,14 +91,15 @@ function toAdapterSession(s: any): AdapterSession {
 }
 
 /**
- * Fully implemented custom NextAuth Adapter using Prisma.
+ * Fully implemented custom NextAuth Adapter using Prisma, with strict typing.
  */
 export const adapter: Adapter = {
-  async createUser(user) {
+  // ---------- USER ----------
+  async createUser(user: Omit<AdapterUser, "id">): Promise<AdapterUser> {
     const created = await prisma.user.create({
       data: {
         name: user.name ?? null,
-        email: user.email ?? null,
+        email: user.email ? user.email.toLowerCase() : null,
         emailVerified: user.emailVerified ?? null,
         image: user.image ?? null,
       },
@@ -81,37 +107,36 @@ export const adapter: Adapter = {
     return toAdapterUser(created)
   },
 
-  async getUser(id) {
+  async getUser(id: string): Promise<AdapterUser | null> {
     const u = await prisma.user.findUnique({ where: { id } })
     return u ? toAdapterUser(u) : null
   },
 
-  async getUserByEmail(email) {
+  async getUserByEmail(email: string | null | undefined): Promise<AdapterUser | null> {
     if (!email) return null
-    const u = await prisma.user.findUnique({ where: { email } })
+    const u = await prisma.user.findUnique({ where: { email: email.toLowerCase() } })
     return u ? toAdapterUser(u) : null
   },
 
-  async getUserByAccount({ provider, providerAccountId }) {
+  async getUserByAccount(params: { provider: string; providerAccountId: string }): Promise<AdapterUser | null> {
     const account = await prisma.account.findUnique({
       where: {
         provider_providerAccountId: {
-          provider,
-          providerAccountId,
+          provider: params.provider,
+          providerAccountId: params.providerAccountId,
         },
       },
       include: { user: true },
     })
-    if (!account?.user) return null
-    return toAdapterUser(account.user)
+    return account?.user ? toAdapterUser(account.user) : null
   },
 
-  async updateUser(user) {
+  async updateUser(user: Partial<AdapterUser> & { id: string }): Promise<AdapterUser> {
     const updated = await prisma.user.update({
-      where: { id: user.id as string },
+      where: { id: user.id },
       data: {
         name: user.name ?? undefined,
-        email: user.email ?? undefined,
+        email: user.email ? user.email.toLowerCase() : undefined,
         emailVerified: user.emailVerified ?? undefined,
         image: user.image ?? undefined,
       },
@@ -119,13 +144,15 @@ export const adapter: Adapter = {
     return toAdapterUser(updated)
   },
 
-  async deleteUser(userId) {
+  async deleteUser(userId: string): Promise<void> {
+    // Defensive cleanup — keep if you rely on cascading manually
     await prisma.account.deleteMany({ where: { userId } })
     await prisma.session.deleteMany({ where: { userId } })
     await prisma.user.delete({ where: { id: userId } })
   },
 
-  async linkAccount(account) {
+  // ---------- ACCOUNT ----------
+  async linkAccount(account: AdapterAccount): Promise<AdapterAccount | null | undefined> {
     const created = await prisma.account.create({
       data: {
         userId: account.userId,
@@ -146,18 +173,19 @@ export const adapter: Adapter = {
     return toAdapterAccount(created)
   },
 
-  async unlinkAccount({ provider, providerAccountId }) {
+  async unlinkAccount(params: { provider: string; providerAccountId: string }): Promise<void> {
     await prisma.account.delete({
       where: {
         provider_providerAccountId: {
-          provider,
-          providerAccountId,
+          provider: params.provider,
+          providerAccountId: params.providerAccountId,
         },
       },
     })
   },
 
-  async createSession(session: { sessionToken: string; userId: string; expires: Date }): Promise<AdapterSession> {
+  // ---------- SESSION ----------
+  async createSession(session: Omit<AdapterSession, "id">): Promise<AdapterSession> {
     const s = await prisma.session.create({
       data: {
         sessionToken: session.sessionToken,
@@ -168,7 +196,7 @@ export const adapter: Adapter = {
     return toAdapterSession(s)
   },
 
-  async getSessionAndUser(sessionToken: string) {
+  async getSessionAndUser(sessionToken: string): Promise<{ session: AdapterSession; user: AdapterUser } | null> {
     const s = await prisma.session.findUnique({
       where: { sessionToken },
       include: { user: true },
@@ -201,6 +229,7 @@ export const adapter: Adapter = {
     await prisma.session.deleteMany({ where: { sessionToken } })
   },
 
+  // ---------- VERIFICATION TOKEN ----------
   async createVerificationToken(token: VerificationToken): Promise<VerificationToken> {
     const created = await prisma.verificationToken.create({
       data: {
@@ -253,9 +282,11 @@ export const authOptions: NextAuthOptions = {
         name: { label: "Name", type: "text" },
       },
       async authorize(credentials) {
-        const email = (credentials?.email ?? "").toString().trim().toLowerCase()
+        const rawEmail = (credentials?.email ?? "").toString().trim()
+        const email = rawEmail ? rawEmail.toLowerCase() : ""
         const displayName = (credentials?.name ?? "").toString().trim() || null
         if (!email) return null
+
         let user = await prisma.user.findUnique({ where: { email } })
         if (!user) {
           user = await prisma.user.create({
@@ -270,6 +301,7 @@ export const authOptions: NextAuthOptions = {
             data: { name: displayName },
           })
         }
+
         return {
           id: user.id,
           email: user.email,
