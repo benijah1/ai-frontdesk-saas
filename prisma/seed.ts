@@ -44,7 +44,7 @@ async function main() {
       where: { email: adminEmail },
       data: {
         password: hashed,
-        role: "ADMIN",
+        role: "SUPERADMIN",
         isAdmin: true,
         bypassPaywall: true,
         tenantId: tenant.id,
