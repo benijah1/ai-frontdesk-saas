@@ -1,8 +1,10 @@
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
+  // For production, consider "postgresql" and set DATABASE_URL accordingly.
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
@@ -10,15 +12,16 @@ datasource db {
 model User {
   id             String    @id @default(cuid())
 
+  // NextAuth base fields
   email          String?   @unique
   emailVerified  DateTime?
   name           String?
   image          String?
 
-  // Authentication
+  // Credentials auth (optional for OAuth-only users)
   password       String?
 
-  // Authorization / Access (SQLite: use string instead of enum)
+  // Authorization / Access (string role for SQLite)
   role           String    @default("USER") // "USER" | "ADMIN" | "SUPERADMIN"
   isAdmin        Boolean   @default(false)
   bypassPaywall  Boolean   @default(false)
@@ -35,6 +38,7 @@ model User {
 
   @@index([tenantId])
   @@index([role])
+  @@index([createdAt])
 }
 
 model Tenant {
@@ -44,6 +48,8 @@ model Tenant {
   primaryColor String?  @default("#0ea5e9")
   createdAt    DateTime @default(now())
   users        User[]
+
+  @@index([createdAt])
 }
 
 model Session {
@@ -55,6 +61,7 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([expires])
 }
 
 model Account {
