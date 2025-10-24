@@ -36,3 +36,20 @@
     @apply mx-auto max-w-screen-xl px-4;
   }
 }
+
+/* --- TEMP LOGIN READABILITY PATCH --- */
+[data-login] input,
+[data-login] input::placeholder,
+[data-login] .placeholder\:text-foreground::placeholder {
+  color: #111827 !important; /* Tailwind gray-900 */
+}
+
+[data-login] input {
+  color: #111827 !important;
+}
+
+[data-login] .muted,
+[data-login] .text-muted-foreground {
+  color: #6B7280 !important; /* Tailwind gray-500 */
+}
+
