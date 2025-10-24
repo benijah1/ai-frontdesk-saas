@@ -6,25 +6,19 @@ import EmailProvider from "next-auth/providers/email";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma"; // prisma singleton
 
-// NOTE: Do not export this from a route file.
-// Next.js App Router routes may only export HTTP methods (GET/POST/etc).
+// Keep this file-scoped; DO NOT export from a route module.
 const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
 
   providers: [
-    // --- Google OAuth ---
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
-
-    // --- GitHub OAuth ---
     GitHubProvider({
       clientId: process.env.GITHUB_ID!,
       clientSecret: process.env.GITHUB_SECRET!,
     }),
-
-    // --- Email Magic Link (optional) ---
     EmailProvider({
       server: {
         host: process.env.EMAIL_SERVER_HOST!,
@@ -38,10 +32,7 @@ const authOptions: NextAuthOptions = {
     }),
   ],
 
-  pages: {
-    signIn: "/login",
-  },
-
+  pages: { signIn: "/login" },
   session: { strategy: "database" },
   secret: process.env.NEXTAUTH_SECRET,
 
