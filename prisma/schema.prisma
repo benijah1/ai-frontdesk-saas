@@ -7,12 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  USER
-  ADMIN
-  SUPERADMIN
-}
-
 model User {
   id             String    @id @default(cuid())
 
@@ -24,8 +18,8 @@ model User {
   // Authentication
   password       String?
 
-  // Authorization / Access
-  role           Role      @default(USER)
+  // Authorization / Access (SQLite: use string instead of enum)
+  role           String    @default("USER") // "USER" | "ADMIN" | "SUPERADMIN"
   isAdmin        Boolean   @default(false)
   bypassPaywall  Boolean   @default(false)
 
@@ -40,6 +34,7 @@ model User {
   accounts       Account[]
 
   @@index([tenantId])
+  @@index([role])
 }
 
 model Tenant {
