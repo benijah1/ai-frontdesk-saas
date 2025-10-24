@@ -3,10 +3,12 @@ import NextAuth, { type NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import GitHubProvider from "next-auth/providers/github";
 import EmailProvider from "next-auth/providers/email";
-import { PrismaAdapter } from "@next-auth/prisma-adapter"; // <- v4 adapter path
-import { prisma } from "@/lib/prisma"; // ensure this exports a singleton PrismaClient
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import { prisma } from "@/lib/prisma"; // prisma singleton
 
-export const authOptions: NextAuthOptions = {
+// NOTE: Do not export this from a route file.
+// Next.js App Router routes may only export HTTP methods (GET/POST/etc).
+const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
 
   providers: [
@@ -40,15 +42,12 @@ export const authOptions: NextAuthOptions = {
     signIn: "/login",
   },
 
-  // You have Session model in Prisma; keep DB sessions
   session: { strategy: "database" },
-
   secret: process.env.NEXTAUTH_SECRET,
 
   callbacks: {
     async session({ session, user }) {
       if (session?.user) {
-        // expose user.id on the session for the client
         (session.user as any).id = user.id;
       }
       return session;
@@ -56,6 +55,5 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-// App Router handlers
 const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
