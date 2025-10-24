@@ -5,21 +5,16 @@ import bcrypt from "bcrypt";
 const prisma = new PrismaClient();
 
 async function main() {
-  // Config: pull password from env (recommended). Fallback to provided password only if env missing.
+  // Configuration: prefer env vars for security, fallback to default
   const adminEmail = process.env.ADMIN_EMAIL ?? "benjamin@reachsmart.ai";
-  const adminPassword = process.env.ADMIN_PASSWORD ?? "Bobcats001"; // fallback - avoid committing this
+  const adminPassword = process.env.ADMIN_PASSWORD ?? "Bobcats001"; // fallback for dev only
   const tenantName = process.env.ADMIN_TENANT ?? "ReachSmart";
 
   if (!adminPassword) {
-    throw new Error("No admin password provided. Set ADMIN_PASSWORD in env.");
+    throw new Error("No admin password provided. Set ADMIN_PASSWORD in your environment.");
   }
 
-  // Basic password policy check (warn but continue)
-  if (adminPassword.length < 8) {
-    console.warn("Warning: provided password is shorter than 8 characters.");
-  }
-
-  // Hash password
+  // Hash password securely
   const saltRounds = Number(process.env.BCRYPT_ROUNDS ?? 12);
   const hashed = await bcrypt.hash(adminPassword, saltRounds);
 
@@ -32,44 +27,44 @@ async function main() {
         primaryColor: "#0ea5e9",
       },
     });
-    console.log("Created tenant:", tenant.id);
+    console.log("✅ Created tenant:", tenant.name);
   }
 
-  // Upsert user
+  // Find or create admin user
   const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
 
   if (existing) {
-    console.log("Admin user already exists. Updating role/isAdmin/bypassPaywall.");
+    console.log("⚙️  Admin already exists — updating privileges...");
     await prisma.user.update({
       where: { email: adminEmail },
       data: {
         password: hashed,
-        role: "SUPERADMIN",
+        role: "SUPERADMIN", // now a string instead of enum
         isAdmin: true,
         bypassPaywall: true,
         tenantId: tenant.id,
       },
     });
-    console.log("Admin user updated:", adminEmail);
+    console.log("✅ Updated admin user:", adminEmail);
   } else {
-    const user = await prisma.user.create({
+    await prisma.user.create({
       data: {
         email: adminEmail,
         password: hashed,
         name: "Benjamin Ijah",
-        role: "ADMIN",
+        role: "SUPERADMIN", // string, safe for SQLite
         isAdmin: true,
         bypassPaywall: true,
         tenant: { connect: { id: tenant.id } },
       },
     });
-    console.log("Admin user created:", user.email);
+    console.log("✅ Created new admin user:", adminEmail);
   }
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("❌ Seed failed:", e);
     process.exit(1);
   })
   .finally(async () => {
