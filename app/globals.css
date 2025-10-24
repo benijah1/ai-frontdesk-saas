@@ -1,67 +1,38 @@
-/* Tailwind v3 directives */
+/* app/globals.css */
+
+/* Tailwind core layers */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Base resets / theme */
+@layer base {
+  html, body {
+    height: 100%;
+    max-width: 100%;
+    overflow-x: hidden; /* Prevent horizontal scroll from rogue elements */
+  }
 
-/* Theme tokens (OKLCH-friendly but fine in all modern browsers) */
-:root {
---background: oklch(1 0 0);
---foreground: oklch(0.145 0 0);
---card: oklch(1 0 0);
---card-foreground: oklch(0.145 0 0);
---popover: oklch(1 0 0);
---popover-foreground: oklch(0.145 0 0);
---primary: oklch(0.58 0.16 265);
---primary-foreground: oklch(0.98 0.02 265);
---secondary: oklch(0.9 0.04 265);
---secondary-foreground: oklch(0.26 0.02 265);
---muted: oklch(0.95 0.02 265);
---muted-foreground: oklch(0.4 0.02 265);
---accent: oklch(0.92 0.05 160);
---accent-foreground: oklch(0.25 0.03 160);
---destructive: oklch(0.64 0.21 29);
---destructive-foreground: oklch(0.99 0.01 29);
---border: oklch(0.88 0.02 265);
---input: oklch(0.92 0.02 265);
---ring: oklch(0.6 0.16 265);
---radius: 1rem;
-}
+  body {
+    @apply bg-[#0A0B10] text-white antialiased;
+  }
 
+  /* Media should never cause layout overflow */
+  img, video, canvas, svg {
+    max-width: 100%;
+    height: auto;
+  }
 
-* { box-sizing: border-box; }
-html, body {
-height: 100%;
-}
-body {
-background: var(--background);
-color: var(--foreground);
-font-feature-settings: "rlig" 1, "calt" 1;
+  ::selection {
+    background: rgba(99, 102, 241, 0.35); /* indigo-500 w/ alpha */
+    color: #fff;
+  }
 }
 
-
-/* Basic utility helpers */
-.container-page {
-@apply mx-auto max-w-6xl px-4 sm:px-6 lg:px-8;
-}
-.btn {
-@apply inline-flex items-center gap-2 rounded-2xl border border-transparent px-4 py-2 text-sm font-medium transition;
-}
-.btn-primary {
-@apply bg-[color:var(--primary)] text-[color:var(--primary-foreground)] hover:opacity-90;
-}
-.btn-ghost {
-@apply bg-transparent text-[color:var(--foreground)] hover:bg-[color:var(--muted)];
-}
-.card {
-@apply rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] shadow-sm;
-}
-.card-body {
-@apply p-6;
-}
-.nav-link {
-@apply text-sm text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] transition;
-}
-.nav-link-active {
-@apply font-semibold text-[color:var(--foreground)];
+/* Utility enhancements */
+@layer utilities {
+  /* Smooth container behavior across the site */
+  .container-safe {
+    @apply mx-auto max-w-screen-xl px-4;
+  }
 }
