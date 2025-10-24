@@ -2,8 +2,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-// If you decide to enable the footer later, uncomment the next line too.
-// import { Bot } from "lucide-react";
+import Link from "next/link";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,16 +19,68 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        {children}
-        {/* To enable the footer, also uncomment <SiteFooter /> and the Bot import. */}
+        <SiteHeader />
+        <main className="min-h-[calc(100dvh-4rem)]">{children}</main>
+        {/* To enable the footer later, uncomment the component below and the footer function. */}
         {/* <SiteFooter /> */}
       </body>
     </html>
   );
 }
 
+/** -------------------- Header -------------------- */
+function SiteHeader() {
+  return (
+    <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#0b0f17]/80 backdrop-blur supports-[backdrop-filter]:bg-[#0b0f17]/60">
+      <div className="mx-auto flex h-16 max-w-screen-xl items-center justify-between gap-4 px-4">
+        {/* Brand */}
+        <Link
+          href="/"
+          className="group inline-flex items-center gap-2 text-[15px] font-semibold tracking-tight text-white"
+          aria-label="AI Front Desk Home"
+        >
+          <span className="inline-block h-6 w-6 rounded-md bg-gradient-to-br from-indigo-400 to-cyan-400 opacity-90 transition group-hover:opacity-100" />
+          <span>AI&nbsp;Front&nbsp;Desk</span>
+        </Link>
+
+        {/* Nav */}
+        <nav aria-label="Primary" className="flex items-center gap-1 sm:gap-2">
+          <NavLink href="/#features">Features</NavLink>
+          <NavLink href="/#pricing">Pricing</NavLink>
+          <NavLink href="/docs">Docs</NavLink>
+          <Link
+            href="/login"
+            className="ml-2 inline-flex h-9 items-center rounded-md border border-white/15 px-3 text-sm font-medium text-white/90 transition hover:border-white/25 hover:text-white"
+          >
+            Sign in
+          </Link>
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+function NavLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex h-9 items-center rounded-md px-2 text-sm text-white/80 transition hover:text-white"
+    >
+      {children}
+    </Link>
+  );
+}
+
 /*
-  Optional footer — keep this whole block commented out until you want it visible.
+-------------------- Optional Footer (keep commented until needed) --------------------
+
+import { Bot } from "lucide-react";
 
 function SiteFooter() {
   return (
