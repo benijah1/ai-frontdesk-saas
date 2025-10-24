@@ -14,36 +14,52 @@ export default function LoginPage() {
     e.preventDefault();
     setErr(null);
     setLoading(true);
-    const res = await signIn("credentials", { email, password, redirect: true, callbackUrl: "/dashboard" });
-    if (!res || res.error) setErr(res?.error || "Invalid credentials");
-    setLoading(false);
+
+    const res = await signIn("credentials", {
+      email,
+      password,
+      redirect: true,
+      callbackUrl: "/dashboard",
+    });
+
+    if (!res || (res as any)?.error) {
+      setErr((res as any)?.error || "Invalid credentials");
+      setLoading(false);
+    }
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
-      <div className="w-full max-w-md bg-white rounded-xl shadow p-6 space-y-6">
+    <main
+      data-login
+      className="min-h-screen flex items-center justify-center p-6 bg-slate-50"
+    >
+      <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-sm text-gray-900">
         <h1 className="text-2xl font-bold">Sign in</h1>
 
-        <form onSubmit={onSubmit} className="space-y-3">
+        <form onSubmit={onSubmit} className="mt-4 space-y-4">
           <label className="block">
-            <span className="text-sm">Email</span>
+            <span className="text-sm font-medium text-gray-700">Email</span>
             <input
               type="email"
-              className="mt-1 w-full border rounded-md px-3 py-2"
+              name="email"
+              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 outline-none focus:border-gray-400"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
               required
               autoComplete="email"
             />
           </label>
 
           <label className="block">
-            <span className="text-sm">Password</span>
+            <span className="text-sm font-medium text-gray-700">Password</span>
             <input
               type="password"
-              className="mt-1 w-full border rounded-md px-3 py-2"
+              name="password"
+              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 outline-none focus:border-gray-400"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
               required
               autoComplete="current-password"
             />
@@ -53,38 +69,46 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="w-full rounded-md px-3 py-2 font-semibold bg-blue-600 text-white disabled:opacity-60"
+            className="w-full rounded-md bg-blue-600 px-3 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
             disabled={loading}
           >
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
 
-        <div className="text-center text-sm text-slate-500">or</div>
+        <div className="my-6 text-center text-xs uppercase tracking-wide text-gray-400">
+          or
+        </div>
 
         <div className="space-y-2">
           <button
+            type="button"
             onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-            className="w-full rounded-md px-3 py-2 border"
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 hover:bg-gray-50"
           >
             Continue with Google
           </button>
           <button
+            type="button"
             onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
-            className="w-full rounded-md px-3 py-2 border"
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 hover:bg-gray-50"
           >
             Continue with GitHub
           </button>
           <button
+            type="button"
             onClick={() => signIn("email", { email, callbackUrl: "/dashboard" })}
-            className="w-full rounded-md px-3 py-2 border"
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 hover:bg-gray-50"
           >
             Email me a magic link
           </button>
         </div>
 
-        <p className="text-sm text-slate-600 text-center">
-          New here? <Link className="text-blue-600 underline" href="/register">Create an account</Link>
+        <p className="mt-6 text-center text-sm text-gray-600">
+          New here?{" "}
+          <Link className="text-blue-600 underline" href="/register">
+            Create an account
+          </Link>
         </p>
       </div>
     </main>
