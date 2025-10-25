@@ -1,6 +1,10 @@
 import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { unstable_noStore as noStore } from "next/cache";
+
+export const dynamic = "force-dynamic";
 
 // Safely read string fields without requiring them to exist on the TS type
 function getStringField(obj: unknown, keys: string[]): string | undefined {
@@ -34,21 +38,36 @@ function getArrayLength(obj: unknown, keys: string[]): number {
 }
 
 export default async function DashboardPage() {
+  noStore();
   const session = await auth();
-  const userId = session?.user?.id;
 
-  if (!userId) {
-    return (
-      <main className="mx-auto max-w-5xl px-4 py-10">
-        <h1 className="text-2xl font-semibold mb-4">Welcome</h1>
-        <p className="text-muted-foreground">
-          Please <Link href="/login" className="underline">sign in</Link> to view your dashboard.
-        </p>
-      </main>
-    );
+  // Hard redirect if not authenticated
+  if (!session?.user) {
+    redirect("/login");
   }
 
-  // Load tenant + services (kept as-is)
+  // Resolve userId robustly:
+  // - Prefer session.user.id (if your session callback adds it)
+  // - Fallback: look up by email
+  let userId: string | undefined =
+    (session.user as any)?.id ||
+    (session as any)?.userId ||
+    (session.user as any)?.userId;
+
+  if (!userId && session.user?.email) {
+    const dbUser = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+    userId = dbUser?.id;
+  }
+
+  if (!userId) {
+    // If we still can't resolve, force re-auth (prevents the “Please sign in” UI while signed in)
+    redirect("/login");
+  }
+
+  // Load tenant + services
   const tenant = await prisma.tenant.findFirst({
     where: { users: { some: { id: userId } } },
     include: { services: true },
@@ -79,7 +98,9 @@ export default async function DashboardPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
+        <h1 className="text-2xl font-semibold">
+          Welcome, {session.user.name ?? "there"}
+        </h1>
         <Link
           href="/setup"
           className="inline-flex items-center rounded-lg border px-4 py-2 text-sm hover:bg-white/5"
@@ -103,7 +124,7 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <>
-          {/* Example: Start animation preview content */}
+          {/* Start animation preview content */}
           <section className="rounded-xl border p-6 mb-6 bg-white/5">
             <h2 className="text-lg font-semibold mb-3">AI Front Desk — Start Animation Content</h2>
             <p className="text-sm text-muted-foreground mb-2">
@@ -119,7 +140,7 @@ export default async function DashboardPage() {
             </div>
           </section>
 
-          {/* Example: Service cards preview */}
+          {/* Service cards preview */}
           <section className="rounded-xl border p-6 bg-white/5">
             <h2 className="text-lg font-semibold mb-3">Service Cards (Generated)</h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
