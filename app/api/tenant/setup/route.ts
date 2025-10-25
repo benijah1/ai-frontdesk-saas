@@ -1,66 +1,63 @@
+// app/api/tenant/setup/route.ts
 import { NextResponse } from "next/server";
-const greeting = String(form.get("greeting")||"");
-const voice = String(form.get("voice")||"");
+import { prisma } from "@/lib/prisma";
 
+/**
+ * Create or update a Tenant from multipart/form-data or JSON.
+ * Fields: name (required), subdomain, primaryColor, secondaryColor, accentColor, brandFont,
+ *         logoUrl, phone, email, address, hoursJson, greeting, voice
+ */
+export async function POST(req: Request) {
+  try {
+    let body: Record<string, any> = {};
 
-if(!name) return new NextResponse("Company name required", { status: 400 });
+    // Support both form POST and JSON POST
+    const contentType = req.headers.get("content-type") || "";
+    if (contentType.includes("multipart/form-data") || contentType.includes("application/x-www-form-urlencoded")) {
+      const form = await req.formData();
+      form.forEach((v, k) => (body[k] = typeof v === "string" ? v : ""));
+    } else if (contentType.includes("application/json")) {
+      body = await req.json();
+    }
 
+    const name = String(body.name || "").trim();
+    if (!name) {
+      return new NextResponse("Company name required", { status: 400 });
+    }
 
-// Ensure current user
-const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-if(!user) return new NextResponse("User not found", { status: 404 });
+    const data = {
+      name,
+      subdomain: body.subdomain ? String(body.subdomain).trim() : null,
+      primaryColor: body.primaryColor ? String(body.primaryColor) : null,
+      secondaryColor: body.secondaryColor ? String(body.secondaryColor) : null,
+      accentColor: body.accentColor ? String(body.accentColor) : null,
+      brandFont: body.brandFont ? String(body.brandFont) : null,
+      logoUrl: body.logoUrl ? String(body.logoUrl) : null,
+      phone: body.phone ? String(body.phone) : null,
+      email: body.email ? String(body.email) : null,
+      address: body.address ? String(body.address) : null,
+      hoursJson: body.hoursJson ? String(body.hoursJson) : null,
+      greeting: body.greeting ? String(body.greeting) : null,
+      voice: body.voice ? String(body.voice) : null,
+    } as const;
 
+    // Upsert by name (adjust if you prefer unique by subdomain)
+    const tenant = await prisma.tenant.upsert({
+      where: { name },
+      update: { ...data },
+      create: { ...data },
+      include: { services: true },
+    });
 
-// Create tenant
-const desired = subdomain || slugify(name).slice(0, 30);
+    // Prefer subdomain link if present, otherwise /t/[pathSlug]
+    const url =
+      tenant.subdomain
+        ? `https://${tenant.subdomain}.yourapp.com`
+        : `/t/${tenant.pathSlug || ""}`;
 
-
-// Try reserve subdomain; if conflict, leave null and fallback to path
-const existing = await prisma.tenant.findFirst({ where: { OR: [ { subdomain: desired }, { name } ] } });
-const sub = existing?.subdomain ? null : desired;
-
-
-const tenant = await prisma.tenant.create({
-data: {
-name,
-subdomain: sub || null,
-primaryColor, secondaryColor, accentColor,
-brandFont, logoUrl, phone, email, address,
-greeting, voice,
-users: user.tenantId ? undefined : { connect: [{ id: user.id }] },
-}
-});
-
-
-// Attach tenant to user if not already
-if(!user.tenantId){
-await prisma.user.update({ where: { id: user.id }, data: { tenantId: tenant.id } });
-}
-
-
-// Upsert services
-const names = servicesCsv.split(",").map(s=>s.trim()).filter(Boolean);
-for(const svcName of names){
-const slug = slugify(svcName);
-await prisma.service.upsert({
-where: { tenantId_slug: { tenantId: tenant.id, slug } },
-create: { tenantId: tenant.id, name: svcName, slug },
-update: { name: svcName }
-});
-}
-
-
-// Build URL
-const host = req.headers.get("host") || "localhost:3000";
-const isLocal = host.startsWith("localhost");
-let url = "";
-if(tenant.subdomain && !isLocal){
-const root = host.split(".").slice(-2).join("."); // yourapp.com
-url = `https://${tenant.subdomain}.${root}/frontdesk`;
-} else {
-url = `/${"t"}/${tenant.pathSlug}/frontdesk`;
-}
-
-
-return NextResponse.json({ ok: true, tenantId: tenant.id, url });
+    return NextResponse.json({ ok: true, tenantId: tenant.id, url });
+  } catch (err: any) {
+    console.error("Tenant setup error:", err);
+    return new NextResponse("Internal error", { status: 500 });
+  }
 }
