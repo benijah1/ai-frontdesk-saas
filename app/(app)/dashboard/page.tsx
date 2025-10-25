@@ -2,16 +2,35 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
 import Link from "next/link";
 
-// Read a string field safely from an object using a list of candidate keys.
-// This avoids TS errors if the Prisma model doesn't actually have a given key.
+// Safely read string fields without requiring them to exist on the TS type
 function getStringField(obj: unknown, keys: string[]): string | undefined {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const anyObj = obj as any;
+  const anyObj = obj as Record<string, unknown> | null | undefined;
+  if (!anyObj) return undefined;
   for (const k of keys) {
-    const v = anyObj?.[k];
+    const v = anyObj[k];
     if (typeof v === "string" && v.trim().length > 0) return v.trim();
   }
   return undefined;
+}
+
+// Safely read array-ish fields (e.g., businessDays could be string[] or JSON)
+function getArrayLength(obj: unknown, keys: string[]): number {
+  const anyObj = obj as Record<string, unknown> | null | undefined;
+  if (!anyObj) return 0;
+  for (const k of keys) {
+    const v = anyObj[k];
+    if (Array.isArray(v)) return v.length;
+    // Sometimes stored as JSON string
+    if (typeof v === "string") {
+      try {
+        const parsed = JSON.parse(v);
+        if (Array.isArray(parsed)) return parsed.length;
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return 0;
 }
 
 export default async function DashboardPage() {
@@ -29,28 +48,32 @@ export default async function DashboardPage() {
     );
   }
 
-  // Load tenant + minimal info needed to decide if setup is complete
+  // Load tenant + services (kept as-is)
   const tenant = await prisma.tenant.findFirst({
     where: { users: { some: { id: userId } } },
     include: { services: true },
   });
 
-  // Safely resolve a "website" value from whichever field name your schema uses
-  // (common variants: websiteUrl, website, siteUrl, url)
-  const website =
-    getStringField(tenant, ["websiteUrl", "website", "siteUrl", "url"]);
+  // Resolve potentially differently-named fields without breaking types
+  const phone = getStringField(tenant, ["phone"]);
+  const website = getStringField(tenant, ["websiteUrl", "website", "siteUrl", "url"]);
+  const licenseNumber = getStringField(tenant, ["licenseNumber", "license"]);
+  const openTime = getStringField(tenant, ["openTime", "openingTime", "hoursOpen"]);
+  const closeTime = getStringField(tenant, ["closeTime", "closingTime", "hoursClose"]);
+  const businessDaysLen = getArrayLength(tenant, ["businessDays", "workDays", "openDays"]);
+
+  const startAnimationHeadline =
+    getStringField(tenant, ["startAnimationHeadline", "startHeadline", "welcomeHeadline"]);
+  const startAnimationSubtext =
+    getStringField(tenant, ["startAnimationSubtext", "startSubtext", "welcomeSubtext"]);
 
   const isSetupIncomplete =
-    !getStringField(tenant, ["phone"]) ||
+    !phone ||
     !website ||
-    !getStringField(tenant, ["licenseNumber"]) ||
-    !(
-      // businessDays may be string[] or JSON/text depending on schema
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (tenant as any)?.businessDays?.length
-    ) ||
-    !getStringField(tenant, ["openTime"]) ||
-    !getStringField(tenant, ["closeTime"]) ||
+    !licenseNumber ||
+    businessDaysLen === 0 ||
+    !openTime ||
+    !closeTime ||
     !(tenant?.services?.length);
 
   return (
@@ -84,14 +107,14 @@ export default async function DashboardPage() {
           <section className="rounded-xl border p-6 mb-6 bg-white/5">
             <h2 className="text-lg font-semibold mb-3">AI Front Desk — Start Animation Content</h2>
             <p className="text-sm text-muted-foreground mb-2">
-              Generated from your theme & details. This is what the assistant uses on open.
+              Generated from your theme &amp; details. This is what the assistant uses on open.
             </p>
             <div className="rounded-lg bg-black/30 p-4 text-sm leading-relaxed">
               <div className="text-xl font-bold mb-1">
-                {tenant?.startAnimationHeadline ?? `Welcome to ${tenant?.name ?? "Our Front Desk"}`}
+                {startAnimationHeadline ?? `Welcome to ${tenant?.name ?? "Our Front Desk"}`}
               </div>
               <div className="opacity-80">
-                {tenant?.startAnimationSubtext ?? "How can we help you today?"}
+                {startAnimationSubtext ?? "How can we help you today?"}
               </div>
             </div>
           </section>
