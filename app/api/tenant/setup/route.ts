@@ -1,6 +1,7 @@
 // app/api/tenant/setup/route.ts
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 // Minimal slugify for path slugs
 function slugify(input: string) {
@@ -10,10 +11,10 @@ function slugify(input: string) {
     .replace(/['"]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 64);
+    .slice(0, 96);
 }
 
-function randomSuffix(len = 8) {
+function randomSuffix(len = 6) {
   const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
   let out = "";
   for (let i = 0; i < len; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
@@ -49,44 +50,63 @@ export async function POST(req: Request) {
         ? slugify(pathSlugRaw)
         : slugify(name);
 
-    // If the slug ended up empty (e.g., name was only symbols), add a random suffix.
     if (!desiredPathSlug) desiredPathSlug = `t-${randomSuffix(10)}`;
 
     // Choose a valid unique selector for upsert:
-    // Try subdomain first (if provided), else pathSlug.
     const where =
       desiredSubdomain
         ? ({ subdomain: desiredSubdomain } as const)
         : ({ pathSlug: desiredPathSlug } as const);
 
     // Shape the data for update/create. Adjust fields to match your Tenant model.
-    const tenantData = {
+    const tenantData: Prisma.TenantUpdateInput & Prisma.TenantCreateInput = {
       name,
-      // Only set subdomain if provided or if you want to mirror pathSlug as default:
       ...(desiredSubdomain ? { subdomain: desiredSubdomain } : {}),
       pathSlug: desiredPathSlug,
       ...(primaryColor ? { primaryColor } : {}),
-      // Example branding fields if they exist in your schema:
       ...(("logoUrl" in branding && branding.logoUrl) ? { logoUrl: branding.logoUrl } : {}),
       ...(("accentColor" in branding && branding.accentColor) ? { accentColor: branding.accentColor } : {}),
     };
 
-    // Optional: prepare nested services upserts/creates if your schema supports it.
-    // If your schema has a Service model with unique name per tenant, you might want to
-    // do separate upserts. Here we’ll just create on tenant creation and skip on update.
-    const createData = {
-      ...tenantData,
-      ...(Array.isArray(services) && services.length > 0
+    // ---- Services (create only on initial tenant creation) ----
+    // Your Service model requires `slug`, so provide it here.
+    let serviceCreates: Prisma.ServiceCreateWithoutTenantInput[] | undefined = undefined;
+
+    if (Array.isArray(services) && services.length > 0) {
+      serviceCreates = services
+        .filter((s: any) => s && typeof s.name === "string" && s.name.trim())
+        .map((s: any) => {
+          const svcName = String(s.name).trim();
+          // Make the service slug scoped by tenant pathSlug to avoid global collisions, if slug is globally unique.
+          const base = `${desiredPathSlug}-${svcName}`;
+          const svcSlug = slugify(base) || `svc-${randomSuffix(8)}`;
+
+          const payload: Prisma.ServiceCreateWithoutTenantInput = {
+            name: svcName,
+            slug: svcSlug,
+            ...(s.description ? { description: String(s.description) } : {}),
+            ...(typeof s.price === "number" ? { price: s.price } : {}),
+          };
+
+          return payload;
+        });
+
+      if (serviceCreates.length === 0) {
+        serviceCreates = undefined;
+      }
+    }
+
+    const createData: Prisma.TenantCreateInput = {
+      name: tenantData.name!,
+      pathSlug: tenantData.pathSlug!,
+      ...(tenantData.subdomain ? { subdomain: tenantData.subdomain as string } : {}),
+      ...(tenantData.primaryColor ? { primaryColor: tenantData.primaryColor as string } : {}),
+      ...(tenantData as any).logoUrl ? { logoUrl: (tenantData as any).logoUrl } : {},
+      ...(tenantData as any).accentColor ? { accentColor: (tenantData as any).accentColor } : {},
+      ...(serviceCreates
         ? {
             services: {
-              create: services
-                .filter((s: any) => s && typeof s.name === "string" && s.name.trim())
-                .map((s: any) => ({
-                  name: s.name.trim(),
-                  // Include any other fields your Service model supports:
-                  ...(s.description ? { description: String(s.description) } : {}),
-                  ...(typeof s.price === "number" ? { price: s.price } : {}),
-                })),
+              create: serviceCreates,
             },
           }
         : {}),
@@ -94,7 +114,7 @@ export async function POST(req: Request) {
 
     const tenant = await prisma.tenant.upsert({
       where,
-      update: tenantData, // keep this conservative; avoid mass-creating services on update
+      update: tenantData,
       create: createData,
       include: { services: true },
     });
