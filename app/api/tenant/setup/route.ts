@@ -39,20 +39,31 @@ export async function POST(req: Request) {
       typeof body.subdomain === "string" ? body.subdomain.trim() : undefined;
     const pathSlugRaw: string | undefined =
       typeof body.pathSlug === "string" ? body.pathSlug.trim() : undefined;
+
     const primaryColor: string | undefined =
       typeof body.primaryColor === "string" ? body.primaryColor.trim() : undefined;
+    const secondaryColor: string | undefined =
+      typeof body.secondaryColor === "string" ? body.secondaryColor.trim() : undefined;
     const accentColor: string | undefined =
       typeof body.accentColor === "string" ? body.accentColor.trim() : undefined;
+    const brandFont: string | undefined =
+      typeof body.brandFont === "string" ? body.brandFont.trim() : undefined;
     const logoUrl: string | undefined =
       typeof body.logoUrl === "string" ? body.logoUrl.trim() : undefined;
 
     // Business details
     const phone: string | undefined = typeof body.phone === "string" ? body.phone.trim() : undefined;
-    const websiteUrl: string | undefined =
-      typeof body.websiteUrl === "string" ? body.websiteUrl.trim() : undefined;
-    const licenseNumber: string | undefined =
-      typeof body.licenseNumber === "string" ? body.licenseNumber.trim() : undefined;
+    const email: string | undefined = typeof body.email === "string" ? body.email.trim() : undefined;
+    const address: string | undefined = typeof body.address === "string" ? body.address.trim() : undefined;
+    const city: string | undefined = typeof body.city === "string" ? body.city.trim() : undefined;
+    const state: string | undefined = typeof body.state === "string" ? body.state.trim() : undefined;
+    const zip: string | undefined = typeof body.zip === "string" ? body.zip.trim() : undefined;
 
+    // NOT IN SCHEMA (remove): websiteUrl
+    // const websiteUrl: string | undefined =
+    //   typeof body.websiteUrl === "string" ? body.websiteUrl.trim() : undefined;
+
+    // Hours & schedule
     const businessDays: string[] = Array.isArray(body.businessDays)
       ? body.businessDays
           .filter((d: unknown) => typeof d === "string" && d.trim())
@@ -64,13 +75,16 @@ export async function POST(req: Request) {
     const closeTime: string | null =
       typeof body.closeTime === "string" && body.closeTime.trim() ? body.closeTime.trim() : null;
 
+    const hoursJson: string | undefined =
+      typeof body.hoursJson === "string" ? body.hoursJson.trim() : undefined;
+
     const awards: string[] = Array.isArray(body.awards)
       ? body.awards
           .filter((a: unknown) => typeof a === "string" && a.trim())
           .map((a: string) => a.trim())
       : [];
 
-    // Services
+    // Services (relation table)
     const services: Array<{ name: string; description?: string; price?: number | null }> = Array.isArray(
       body.services
     )
@@ -90,11 +104,19 @@ export async function POST(req: Request) {
           }))
       : [];
 
-    // Start animation content — parsed for UI, not persisted unless schema has these columns.
-    const startAnimationHeadlineRaw: string | undefined =
-      typeof body.startAnimationHeadline === "string" ? body.startAnimationHeadline.trim() : undefined;
-    const startAnimationSubtextRaw: string | undefined =
-      typeof body.startAnimationSubtext === "string" ? body.startAnimationSubtext.trim() : undefined;
+    // Copy
+    const startAnimationHeadline: string | undefined =
+      typeof body.startAnimationHeadline === "string" && body.startAnimationHeadline.trim()
+        ? body.startAnimationHeadline.trim()
+        : undefined;
+    const startAnimationSubtext: string | undefined =
+      typeof body.startAnimationSubtext === "string" && body.startAnimationSubtext.trim()
+        ? body.startAnimationSubtext.trim()
+        : undefined;
+
+    const greeting: string | undefined =
+      typeof body.greeting === "string" ? body.greeting.trim() : undefined;
+    const voice: string | undefined = typeof body.voice === "string" ? body.voice.trim() : undefined;
 
     // Load or create tenant for this user
     let tenant = await prisma.tenant.findFirst({
@@ -104,7 +126,8 @@ export async function POST(req: Request) {
 
     // Derive path/subdomain
     const desiredPathSlug =
-      slugify(pathSlugRaw || tenant?.pathSlug || name || `t-${randomSuffix(8)}`) || `t-${randomSuffix(10)}`;
+      slugify(pathSlugRaw || tenant?.pathSlug || name || `t-${randomSuffix(8)}`) ||
+      `t-${randomSuffix(10)}`;
     const desiredSubdomain = subdomainRaw ? slugify(subdomainRaw) : tenant?.subdomain || undefined;
 
     // Create tenant if user has none yet
@@ -118,12 +141,8 @@ export async function POST(req: Request) {
 
       // Ensure pathSlug is unique; if conflict, suffix it
       let pathSlugUnique = desiredPathSlug;
-      const existing = await prisma.tenant
-        .findUnique({ where: { pathSlug: pathSlugUnique } })
-        .catch(() => null);
-      if (existing) {
-        pathSlugUnique = `${pathSlugUnique}-${randomSuffix(4)}`;
-      }
+      const existing = await prisma.tenant.findUnique({ where: { pathSlug: pathSlugUnique } }).catch(() => null);
+      if (existing) pathSlugUnique = `${pathSlugUnique}-${randomSuffix(4)}`;
 
       tenant = await prisma.tenant.create({
         data: {
@@ -131,7 +150,9 @@ export async function POST(req: Request) {
           pathSlug: pathSlugUnique,
           ...(desiredSubdomain ? { subdomain: desiredSubdomain } : {}),
           ...(primaryColor ? { primaryColor } : {}),
+          ...(secondaryColor ? { secondaryColor } : {}),
           ...(accentColor ? { accentColor } : {}),
+          ...(brandFont ? { brandFont } : {}),
           ...(logoUrl ? { logoUrl } : {}),
           users: { connect: { id: userId } },
         },
@@ -139,31 +160,47 @@ export async function POST(req: Request) {
       });
     }
 
-    // Compute defaulted animation copy (for UI echo)
-    const startAnimationHeadline =
-      startAnimationHeadlineRaw ||
-      (name || tenant.name ? `Welcome to ${name || tenant.name}` : "Welcome to our Front Desk");
-    const startAnimationSubtext =
-      startAnimationSubtextRaw || "Ask me about availability, pricing, or booking — I’m here to help.";
+    // Fallback copy for UI echo (but we also persist if provided)
+    const echoHeadline =
+      startAnimationHeadline || (name || tenant.name ? `Welcome to ${name || tenant.name}` : "Welcome to our Front Desk");
+    const echoSubtext =
+      startAnimationSubtext || "Ask me about availability, pricing, or booking — I’m here to help.";
 
-    // Build Prisma-safe update payload
+    // Build Prisma-safe update payload (matches your schema)
     const data: Prisma.TenantUpdateInput = {
       ...(name ? { name } : {}),
       ...(desiredSubdomain ? { subdomain: desiredSubdomain } : {}),
       ...(desiredPathSlug ? { pathSlug: desiredPathSlug } : {}),
+
+      // Branding
       ...(primaryColor ? { primaryColor } : {}),
+      ...(secondaryColor ? { secondaryColor } : {}),
       ...(accentColor ? { accentColor } : {}),
+      ...(brandFont ? { brandFont } : {}),
       ...(logoUrl ? { logoUrl } : {}),
+
+      // Contact / location
       ...(phone ? { phone } : {}),
-      ...(websiteUrl ? { websiteUrl } : {}),
-      ...(licenseNumber ? { licenseNumber } : {}),
-      ...(businessDays.length ? { businessDays } : { businessDays: [] }),
+      ...(email ? { email } : {}),
+      ...(address ? { address } : {}),
+      ...(city ? { city } : {}),
+      ...(state ? { state } : {}),
+      ...(zip ? { zip } : {}),
+
+      // Hours & schedule
+      ...(Array.isArray(businessDays) ? { businessDays } : {}),
       openTime,
       closeTime,
-      ...(awards.length ? { awards } : { awards: [] }),
-      // Re-enable once columns exist in Tenant model:
-      // ...(startAnimationHeadline ? { startAnimationHeadline } : {}),
-      // ...(startAnimationSubtext ? { startAnimationSubtext } : {}),
+      ...(typeof hoursJson === "string" ? { hoursJson } : {}),
+
+      // Copy / AI
+      ...(typeof greeting === "string" ? { greeting } : {}),
+      ...(typeof voice === "string" ? { voice } : {}),
+      ...(typeof startAnimationHeadline === "string" ? { startAnimationHeadline } : {}),
+      ...(typeof startAnimationSubtext === "string" ? { startAnimationSubtext } : {}),
+
+      // Badges
+      ...(Array.isArray(awards) ? { awards } : {}),
     };
 
     const updatedTenant = await prisma.tenant.update({
@@ -172,19 +209,18 @@ export async function POST(req: Request) {
       include: { services: true },
     });
 
-    // ---- Service upsert by slug (keeps existing, updates changed, removes missing) ----
-    const targetBySlug: Record<
-      string,
-      { name: string; description?: string; price?: number | null }
-    > = {};
-
+    // ---- Service upsert by (tenantId, slug) unique ----
+    // Build desired set keyed by slug (unique per tenant)
+    const targetBySlug: Record<string, { name: string; description?: string; price?: number | null }> = {};
     for (const s of services) {
-      const base = `${updatedTenant.pathSlug}-${s.name}`;
-      let slug = slugify(base) || `svc-${randomSuffix(8)}`;
+      // Slug unique per tenant—use service name as base
+      let slug = slugify(s.name) || `svc-${randomSuffix(8)}`;
+      // De-dupe within this request
       while (targetBySlug[slug]) slug = `${slug}-${randomSuffix(3)}`;
       targetBySlug[slug] = { name: s.name, description: s.description, price: s.price ?? null };
     }
 
+    // Remove services not present in the submitted list
     const keepSlugs = Object.keys(targetBySlug);
     await prisma.service.deleteMany({
       where: {
@@ -193,13 +229,15 @@ export async function POST(req: Request) {
       },
     });
 
+    // Upsert each target (uses composite unique: @@unique([tenantId, slug]))
     for (const [slug, s] of Object.entries(targetBySlug)) {
       await prisma.service.upsert({
-        where: { slug }, // assumes slug is globally unique
+        where: { tenantId_slug: { tenantId: updatedTenant.id, slug } },
         update: {
           name: s.name,
           description: s.description ?? null,
           price: s.price == null ? null : s.price,
+          active: true,
         },
         create: {
           tenantId: updatedTenant.id,
@@ -207,6 +245,7 @@ export async function POST(req: Request) {
           name: s.name,
           description: s.description ?? null,
           price: s.price == null ? null : s.price,
+          active: true,
         },
       });
     }
@@ -219,9 +258,9 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       tenant: finalTenant,
-      // Echo for UI preview (not persisted unless you add columns)
-      startAnimationHeadline,
-      startAnimationSubtext,
+      // Echo for UI preview
+      startAnimationHeadline: echoHeadline,
+      startAnimationSubtext: echoSubtext,
     });
   } catch (err: any) {
     console.error("Tenant setup error:", err);
