@@ -4,9 +4,9 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { PrismaClient, type Service as PrismaService, type Tenant as PrismaTenant } from "@prisma/client";
 
-// --- Prisma singleton to avoid hot-reload instantiation in dev ---
+// --- Prisma singleton (not exported) ---
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
-export const prisma =
+const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
@@ -34,7 +34,7 @@ const fmtDuration = (mins?: number | null) => {
 async function getTenantBySlug(slug: string): Promise<Tenant | null> {
   if (!slug) return null;
   return prisma.tenant.findFirst({
-    where: { OR: [{ pathSlug: slug }, { subdomain: slug }] }, // support either field if present
+    where: { OR: [{ pathSlug: slug }, { subdomain: slug }] },
     include: { services: { orderBy: { name: "asc" } } },
   }) as unknown as Promise<Tenant | null>;
 }
@@ -46,20 +46,14 @@ export async function generateMetadata({
   params: { slug: string };
 }): Promise<Metadata> {
   const tenant = await getTenantBySlug(params.slug);
-  if (!tenant) {
-    return { title: "Front Desk — Not Found" };
-  }
+  if (!tenant) return { title: "Front Desk — Not Found" };
+
   const title = `${tenant.name} — Front Desk`;
-  const description =
-    "Explore services, pricing, and booking details powered by AI Front Desk.";
+  const description = "Explore services, pricing, and booking details powered by AI Front Desk.";
   return {
     title,
     description,
-    openGraph: {
-      title,
-      description,
-      type: "website",
-    },
+    openGraph: { title, description, type: "website" },
   };
 }
 
@@ -70,10 +64,7 @@ export default async function FrontdeskPage({
   params: { slug: string };
 }) {
   const tenant = await getTenantBySlug(params.slug);
-
-  if (!tenant) {
-    notFound();
-  }
+  if (!tenant) notFound();
 
   const services: Service[] = Array.isArray(tenant.services) ? (tenant.services as Service[]) : [];
 
@@ -81,12 +72,9 @@ export default async function FrontdeskPage({
     <main
       className="min-h-screen w-full"
       style={{
-        // Optional: use tenant.primaryColor as an accent if present
-        // Fallback to a tasteful gradient
-        background:
-          tenant.primaryColor
-            ? `radial-gradient(1200px 600px at 10% -10%, ${tenant.primaryColor}22, transparent 60%), radial-gradient(1000px 500px at 110% 10%, ${tenant.primaryColor}1A, transparent 60%), #0A0B10`
-            : "radial-gradient(1200px 600px at 10% -10%, rgba(99,102,241,0.15), transparent 60%), radial-gradient(1000px 500px at 110% 10%, rgba(14,165,233,0.12), transparent 60%), #0A0B10",
+        background: tenant.primaryColor
+          ? `radial-gradient(1200px 600px at 10% -10%, ${tenant.primaryColor}22, transparent 60%), radial-gradient(1000px 500px at 110% 10%, ${tenant.primaryColor}1A, transparent 60%), #0A0B10`
+          : "radial-gradient(1200px 600px at 10% -10%, rgba(99,102,241,0.15), transparent 60%), radial-gradient(1000px 500px at 110% 10%, rgba(14,165,233,0.12), transparent 60%), #0A0B10",
       }}
     >
       <section className="container mx-auto max-w-6xl px-6 py-10 text-white">
@@ -123,8 +111,7 @@ export default async function FrontdeskPage({
           )}
 
           {services.map((s: Service) => {
-            const price =
-              typeof s.price === "number" && s.price > 0 ? fmtUSD(s.price) : null;
+            const price = typeof s.price === "number" && s.price > 0 ? fmtUSD(s.price) : null;
             const duration = fmtDuration(s.durationMinutes ?? undefined);
 
             return (
@@ -153,13 +140,9 @@ export default async function FrontdeskPage({
 
                 {/* Description */}
                 {s.shortDescription ? (
-                  <p className="mt-2 line-clamp-3 text-sm text-white/70">
-                    {s.shortDescription}
-                  </p>
+                  <p className="mt-2 line-clamp-3 text-sm text-white/70">{s.shortDescription}</p>
                 ) : s.description ? (
-                  <p className="mt-2 line-clamp-3 text-sm text-white/70">
-                    {s.description}
-                  </p>
+                  <p className="mt-2 line-clamp-3 text-sm text-white/70">{s.description}</p>
                 ) : (
                   <p className="mt-2 text-sm text-white/50">No description provided.</p>
                 )}
@@ -188,9 +171,7 @@ export default async function FrontdeskPage({
                   <a
                     href={
                       s.pathSlug
-                        ? `/t/${tenant.pathSlug ?? params.slug}/frontdesk/${encodeURIComponent(
-                            s.pathSlug
-                          )}`
+                        ? `/t/${tenant.pathSlug ?? params.slug}/frontdesk/${encodeURIComponent(s.pathSlug)}`
                         : `#`
                     }
                     className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
@@ -220,10 +201,10 @@ export default async function FrontdeskPage({
                 </div>
 
                 {/* Subtle gradient hover */}
-                <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                <div
+                  className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
                   style={{
-                    background:
-                      "radial-gradient(600px 200px at 0% 0%, rgba(255,255,255,0.06), transparent 70%)",
+                    background: "radial-gradient(600px 200px at 0% 0%, rgba(255,255,255,0.06), transparent 70%)",
                   }}
                 />
               </article>
