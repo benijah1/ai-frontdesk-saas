@@ -2,6 +2,18 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
 import Link from "next/link";
 
+// Read a string field safely from an object using a list of candidate keys.
+// This avoids TS errors if the Prisma model doesn't actually have a given key.
+function getStringField(obj: unknown, keys: string[]): string | undefined {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anyObj = obj as any;
+  for (const k of keys) {
+    const v = anyObj?.[k];
+    if (typeof v === "string" && v.trim().length > 0) return v.trim();
+  }
+  return undefined;
+}
+
 export default async function DashboardPage() {
   const session = await auth();
   const userId = session?.user?.id;
@@ -23,13 +35,22 @@ export default async function DashboardPage() {
     include: { services: true },
   });
 
+  // Safely resolve a "website" value from whichever field name your schema uses
+  // (common variants: websiteUrl, website, siteUrl, url)
+  const website =
+    getStringField(tenant, ["websiteUrl", "website", "siteUrl", "url"]);
+
   const isSetupIncomplete =
-    !tenant?.phone ||
-    !tenant?.websiteUrl ||
-    !tenant?.licenseNumber ||
-    !(tenant?.businessDays?.length) ||
-    !tenant?.openTime ||
-    !tenant?.closeTime ||
+    !getStringField(tenant, ["phone"]) ||
+    !website ||
+    !getStringField(tenant, ["licenseNumber"]) ||
+    !(
+      // businessDays may be string[] or JSON/text depending on schema
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (tenant as any)?.businessDays?.length
+    ) ||
+    !getStringField(tenant, ["openTime"]) ||
+    !getStringField(tenant, ["closeTime"]) ||
     !(tenant?.services?.length);
 
   return (
@@ -66,8 +87,12 @@ export default async function DashboardPage() {
               Generated from your theme & details. This is what the assistant uses on open.
             </p>
             <div className="rounded-lg bg-black/30 p-4 text-sm leading-relaxed">
-              <div className="text-xl font-bold mb-1">{tenant?.startAnimationHeadline ?? `Welcome to ${tenant?.name ?? "Our Front Desk"}`}</div>
-              <div className="opacity-80">{tenant?.startAnimationSubtext ?? "How can we help you today?"}</div>
+              <div className="text-xl font-bold mb-1">
+                {tenant?.startAnimationHeadline ?? `Welcome to ${tenant?.name ?? "Our Front Desk"}`}
+              </div>
+              <div className="opacity-80">
+                {tenant?.startAnimationSubtext ?? "How can we help you today?"}
+              </div>
             </div>
           </section>
 
@@ -82,7 +107,9 @@ export default async function DashboardPage() {
                     <p className="text-sm opacity-80 mt-1 line-clamp-3">{s.description}</p>
                   ) : null}
                   {"price" in s && s.price != null ? (
-                    <div className="text-sm mt-2 opacity-80">${Number(s.price).toFixed(2)}</div>
+                    <div className="text-sm mt-2 opacity-80">
+                      ${Number(s.price as unknown as number).toFixed(2)}
+                    </div>
                   ) : null}
                 </div>
               ))}
