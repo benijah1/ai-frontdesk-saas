@@ -52,8 +52,6 @@ model Tenant {
   id             String   @id @default(cuid())
   name           String
   subdomain      String?  @unique // e.g. "fixit" => https://fixit.yourapp.com
-  // Step 1: make optional so existing rows don't block push.
-  // Still keep a default so new rows are populated automatically.
   pathSlug       String?  @unique @default(cuid()) // fallback path: /t/[pathSlug]
   logoUrl        String?
   primaryColor   String?  @default("#0ea5e9")
@@ -63,13 +61,20 @@ model Tenant {
   phone          String?
   email          String?
   address        String?
+  city          String?
+  state         String?
+  zip           String?
   hoursJson      String?  // JSON stringified business hours structure
   greeting       String?  // default AI greeting / opening line
   voice          String?  // optional voice name/key
   createdAt      DateTime @default(now())
   startAnimationHeadline  String?
   startAnimationSubtext   String?
-
+  openTime      String?  // e.g. "09:00"
+  closeTime     String?  // e.g. "17:00"
+  businessDays  String[] @default([])
+  awards        String[] @default([])
+  services      Json?
   services Service[]
   users    User[]
 }
