@@ -1,14 +1,14 @@
 // middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth as nextAuthMiddleware } from "@/auth";
+import { auth as nextAuth } from "next-auth/middleware"; // Edge-safe
 
-// Single middleware that does your rewrite, then delegates to NextAuth.
-export async function middleware(req: NextRequest) {
+// Single middleware: first do your rewrite, then delegate to NextAuth on protected routes
+export default async function middleware(req: NextRequest) {
   const url = req.nextUrl.clone();
   const host = req.headers.get("host") ?? "";
 
-  // Subdomain -> /t/:tenant/frontdesk rewrite
+  // --- Subdomain -> tenant path rewrite for /frontdesk
   const parts = host.split(".");
   const isLocal =
     host.startsWith("localhost") ||
@@ -23,10 +23,15 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // Delegate to NextAuth v5 middleware for auth protection
-  return nextAuthMiddleware(req);
+  // --- Auth guard (Edge-compatible). Require a session (JWT) on matched routes.
+  return nextAuth(req, {
+    callbacks: {
+      authorized: ({ token }) => !!token, // block if no session
+    },
+  });
 }
 
+// Only the routes below will run this middleware (rewrite + auth)
 export const config = {
   matcher: [
     "/frontdesk",
