@@ -35,7 +35,12 @@ const providers = [
       const ok = await bcrypt.compare(password, user.password);
       if (!ok) return null;
 
-      return { id: user.id, email: user.email ?? undefined, name: user.name ?? undefined };
+      // Return minimal shape; adapter will load the rest
+      return {
+        id: user.id,
+        email: user.email ?? undefined,
+        name: user.name ?? undefined,
+      };
     },
   }),
 ];
@@ -60,11 +65,20 @@ if (process.env.GITHUB_ID && process.env.GITHUB_SECRET) {
 // ---- NextAuth options (no export!) ----
 const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "database" }, // matches your Session model
+  session: {
+    strategy: "database", // uses your "Session" table
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  // Keep users on /login for sign-in and error states
+  pages: {
+    signIn: "/login",
+    error: "/login",
+  },
   providers,
   secret: process.env.NEXTAUTH_SECRET, // v4 env var
   callbacks: {
     async session({ session, user }) {
+      // Enrich session with id/role/tenantId for your app
       if (session?.user && user) {
         (session.user as any).id = user.id;
         (session.user as any).role = (user as any).role ?? "USER";
