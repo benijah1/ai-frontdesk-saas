@@ -1,113 +1,95 @@
-'use client';
+"use client";
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 
-export default function LoginPage() {
+function mapError(error?: string | null) {
+  // NextAuth common codes: CredentialsSignin, OAuthAccountNotLinked, Default
+  switch (error) {
+    case "CredentialsSignin":
+      return "Invalid email or password.";
+    case "AccessDenied":
+      return "Access denied.";
+    default:
+      return "Something went wrong. Please try again.";
+  }
+}
+
+export default function LoginPage({
+  searchParams
+}: {
+  searchParams?: { error?: string }
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [err, setErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const showError = !!searchParams?.error;
+  const errorMsg = showError ? mapError(searchParams?.error) : null;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setErr(null);
-    setLoading(true);
-
-    const res = await signIn("credentials", {
+    setSubmitting(true);
+    // Redirect back to /login if failure, /dashboard if success
+    await signIn("credentials", {
       email,
       password,
       redirect: true,
-      callbackUrl: "/dashboard",
+      callbackUrl: "/dashboard"
     });
-
-    if (!res || (res as any)?.error) {
-      setErr((res as any)?.error || "Invalid credentials");
-      setLoading(false);
-    }
+    setSubmitting(false);
   }
 
   return (
-    <main
-      data-login
-      className="min-h-screen flex items-center justify-center p-6 bg-slate-50"
-    >
-      <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-sm text-gray-900">
+    <main className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
+      <div className="w-full max-w-md bg-white rounded-xl shadow p-6 space-y-6">
         <h1 className="text-2xl font-bold">Sign in</h1>
 
-        <form onSubmit={onSubmit} className="mt-4 space-y-4">
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">Email</span>
+        {showError && (
+          <div className="rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">
+            {errorMsg}
+          </div>
+        )}
+
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Email</label>
             <input
               type="email"
-              name="email"
-              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 outline-none focus:border-gray-400"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.currentTarget.value)}
+              className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
               placeholder="you@example.com"
               required
-              autoComplete="email"
             />
-          </label>
+          </div>
 
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">Password</span>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Password</label>
             <input
               type="password"
-              name="password"
-              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 outline-none focus:border-gray-400"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.currentTarget.value)}
+              className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
               placeholder="••••••••"
               required
-              autoComplete="current-password"
             />
-          </label>
-
-          {err && <p className="text-sm text-red-600">{err}</p>}
+          </div>
 
           <button
             type="submit"
-            className="w-full rounded-md bg-blue-600 px-3 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-            disabled={loading}
+            disabled={submitting}
+            className="w-full rounded-md bg-sky-600 text-white px-4 py-2 font-medium hover:bg-sky-700 disabled:opacity-50"
           >
-            {loading ? "Signing in..." : "Sign in"}
+            {submitting ? "Signing in…" : "Sign in"}
           </button>
         </form>
 
-        <div className="my-6 text-center text-xs uppercase tracking-wide text-gray-400">
-          or
-        </div>
-
-        <div className="space-y-2">
-          <button
-            type="button"
-            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 hover:bg-gray-50"
-          >
-            Continue with Google
-          </button>
-          <button
-            type="button"
-            onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 hover:bg-gray-50"
-          >
-            Continue with GitHub
-          </button>
-          <button
-            type="button"
-            onClick={() => signIn("email", { email, callbackUrl: "/dashboard" })}
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 hover:bg-gray-50"
-          >
-            Email me a magic link
-          </button>
-        </div>
-
-        <p className="mt-6 text-center text-sm text-gray-600">
-          New here?{" "}
-          <Link className="text-blue-600 underline" href="/register">
-            Create an account
+        <p className="text-sm text-slate-600">
+          Forgot your password?{" "}
+          <Link href="/forgot" className="text-sky-700 hover:underline">
+            Reset it
           </Link>
         </p>
       </div>
