@@ -74,7 +74,6 @@ model Tenant {
   closeTime     String?  // e.g. "17:00"
   businessDays  String[] @default([])
   awards        String[] @default([])
-  services      Json?
   services Service[]
   users    User[]
 }
