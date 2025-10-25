@@ -5,7 +5,6 @@ import { signIn } from "next-auth/react";
 import Link from "next/link";
 
 function mapError(error?: string | null) {
-  // NextAuth common codes: CredentialsSignin, OAuthAccountNotLinked, Default
   switch (error) {
     case "CredentialsSignin":
       return "Invalid email or password.";
@@ -31,7 +30,6 @@ export default function LoginPage({
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
-    // Redirect back to /login if failure, /dashboard if success
     await signIn("credentials", {
       email,
       password,
@@ -42,9 +40,12 @@ export default function LoginPage({
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
+    <main
+      data-login
+      className="min-h-screen flex items-center justify-center p-6 bg-slate-50"
+    >
       <div className="w-full max-w-md bg-white rounded-xl shadow p-6 space-y-6">
-        <h1 className="text-2xl font-bold">Sign in</h1>
+        <h1 className="text-2xl font-bold text-foreground">Sign in</h1>
 
         {showError && (
           <div className="rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">
@@ -54,7 +55,7 @@ export default function LoginPage({
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label className="block text-sm font-medium">Email</label>
+            <label className="block text-sm font-medium text-foreground">Email</label>
             <input
               type="email"
               value={email}
@@ -66,7 +67,7 @@ export default function LoginPage({
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium">Password</label>
+            <label className="block text-sm font-medium text-foreground">Password</label>
             <input
               type="password"
               value={password}
@@ -86,7 +87,7 @@ export default function LoginPage({
           </button>
         </form>
 
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           Forgot your password?{" "}
           <Link href="/forgot" className="text-sky-700 hover:underline">
             Reset it
