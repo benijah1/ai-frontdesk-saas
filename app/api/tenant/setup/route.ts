@@ -54,7 +54,9 @@ export async function POST(req: Request) {
       typeof body.licenseNumber === "string" ? body.licenseNumber.trim() : undefined;
 
     const businessDays: string[] = Array.isArray(body.businessDays)
-      ? body.businessDays.filter((d: any) => typeof d === "string" && d.trim()).map((d: string) => d.trim())
+      ? body.businessDays
+          .filter((d: unknown) => typeof d === "string" && d.trim())
+          .map((d: string) => d.trim())
       : [];
 
     const openTime: string | null =
@@ -63,7 +65,9 @@ export async function POST(req: Request) {
       typeof body.closeTime === "string" && body.closeTime.trim() ? body.closeTime.trim() : null;
 
     const awards: string[] = Array.isArray(body.awards)
-      ? body.awards.filter((a: any) => typeof a === "string" && a.trim()).map((a: string) => a.trim())
+      ? body.awards
+          .filter((a: unknown) => typeof a === "string" && a.trim())
+          .map((a: string) => a.trim())
       : [];
 
     // Services
@@ -86,7 +90,7 @@ export async function POST(req: Request) {
           }))
       : [];
 
-    // Start animation content — parsed but not written to DB unless your schema has these fields.
+    // Start animation content — parsed for UI, not persisted unless schema has these columns.
     const startAnimationHeadlineRaw: string | undefined =
       typeof body.startAnimationHeadline === "string" ? body.startAnimationHeadline.trim() : undefined;
     const startAnimationSubtextRaw: string | undefined =
@@ -114,7 +118,9 @@ export async function POST(req: Request) {
 
       // Ensure pathSlug is unique; if conflict, suffix it
       let pathSlugUnique = desiredPathSlug;
-      const existing = await prisma.tenant.findUnique({ where: { pathSlug: pathSlugUnique } }).catch(() => null);
+      const existing = await prisma.tenant
+        .findUnique({ where: { pathSlug: pathSlugUnique } })
+        .catch(() => null);
       if (existing) {
         pathSlugUnique = `${pathSlugUnique}-${randomSuffix(4)}`;
       }
@@ -122,3 +128,106 @@ export async function POST(req: Request) {
       tenant = await prisma.tenant.create({
         data: {
           name,
+          pathSlug: pathSlugUnique,
+          ...(desiredSubdomain ? { subdomain: desiredSubdomain } : {}),
+          ...(primaryColor ? { primaryColor } : {}),
+          ...(accentColor ? { accentColor } : {}),
+          ...(logoUrl ? { logoUrl } : {}),
+          users: { connect: { id: userId } },
+        },
+        include: { services: true },
+      });
+    }
+
+    // Compute defaulted animation copy (for UI echo)
+    const startAnimationHeadline =
+      startAnimationHeadlineRaw ||
+      (name || tenant.name ? `Welcome to ${name || tenant.name}` : "Welcome to our Front Desk");
+    const startAnimationSubtext =
+      startAnimationSubtextRaw || "Ask me about availability, pricing, or booking — I’m here to help.";
+
+    // Build Prisma-safe update payload
+    const data: Prisma.TenantUpdateInput = {
+      ...(name ? { name } : {}),
+      ...(desiredSubdomain ? { subdomain: desiredSubdomain } : {}),
+      ...(desiredPathSlug ? { pathSlug: desiredPathSlug } : {}),
+      ...(primaryColor ? { primaryColor } : {}),
+      ...(accentColor ? { accentColor } : {}),
+      ...(logoUrl ? { logoUrl } : {}),
+      ...(phone ? { phone } : {}),
+      ...(websiteUrl ? { websiteUrl } : {}),
+      ...(licenseNumber ? { licenseNumber } : {}),
+      ...(businessDays.length ? { businessDays } : { businessDays: [] }),
+      openTime,
+      closeTime,
+      ...(awards.length ? { awards } : { awards: [] }),
+      // Re-enable once columns exist in Tenant model:
+      // ...(startAnimationHeadline ? { startAnimationHeadline } : {}),
+      // ...(startAnimationSubtext ? { startAnimationSubtext } : {}),
+    };
+
+    const updatedTenant = await prisma.tenant.update({
+      where: { id: tenant.id },
+      data,
+      include: { services: true },
+    });
+
+    // ---- Service upsert by slug (keeps existing, updates changed, removes missing) ----
+    const targetBySlug: Record<
+      string,
+      { name: string; description?: string; price?: number | null }
+    > = {};
+
+    for (const s of services) {
+      const base = `${updatedTenant.pathSlug}-${s.name}`;
+      let slug = slugify(base) || `svc-${randomSuffix(8)}`;
+      while (targetBySlug[slug]) slug = `${slug}-${randomSuffix(3)}`;
+      targetBySlug[slug] = { name: s.name, description: s.description, price: s.price ?? null };
+    }
+
+    const keepSlugs = Object.keys(targetBySlug);
+    await prisma.service.deleteMany({
+      where: {
+        tenantId: updatedTenant.id,
+        ...(keepSlugs.length ? { NOT: { slug: { in: keepSlugs } } } : {}),
+      },
+    });
+
+    for (const [slug, s] of Object.entries(targetBySlug)) {
+      await prisma.service.upsert({
+        where: { slug }, // assumes slug is globally unique
+        update: {
+          name: s.name,
+          description: s.description ?? null,
+          price: s.price == null ? null : s.price,
+        },
+        create: {
+          tenantId: updatedTenant.id,
+          slug,
+          name: s.name,
+          description: s.description ?? null,
+          price: s.price == null ? null : s.price,
+        },
+      });
+    }
+
+    const finalTenant = await prisma.tenant.findUnique({
+      where: { id: updatedTenant.id },
+      include: { services: true },
+    });
+
+    return NextResponse.json({
+      ok: true,
+      tenant: finalTenant,
+      // Echo for UI preview (not persisted unless you add columns)
+      startAnimationHeadline,
+      startAnimationSubtext,
+    });
+  } catch (err: any) {
+    console.error("Tenant setup error:", err);
+    return NextResponse.json(
+      { error: "Failed to setup tenant", detail: err?.message ?? String(err) },
+      { status: 500 }
+    );
+  }
+}
