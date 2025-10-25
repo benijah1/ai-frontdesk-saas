@@ -2,8 +2,14 @@
 const nextConfig = {
   experimental: {
     serverActions: {
-      allowedOrigins: ['*']
-    }
-  }
+      allowedOrigins: ['*'],
+    },
+  },
+  async redirects() {
+    return [
+      { source: '/', destination: '/dashboard', permanent: false },
+    ];
+  },
 };
+
 export default nextConfig;
