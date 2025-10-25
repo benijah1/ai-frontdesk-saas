@@ -1,24 +1,30 @@
-// app/(app)/dashboard/page.tsx
+import prisma from "@/lib/prisma";
 import FrontDeskSetupForm from "@/components/FrontDeskSetupForm";
+import { auth } from "@/auth"; // or your getServerSession helper
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const session = await auth(); // adjust to your NextAuth helper
+  const userId = session?.user?.id;
+
+  let tenant: any = null;
+  if (userId) {
+    tenant = await prisma.tenant.findFirst({
+      where: { users: { some: { id: userId } } },
+      include: { services: true },
+    });
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-6">
       <h1 className="mb-6 text-2xl font-semibold">Welcome</h1>
 
-      {/* Front Desk Setup */}
+      {/* Setup card */}
       <div className="mb-8">
-        <FrontDeskSetupForm />
+        <FrontDeskSetupForm initialData={tenant ?? undefined} />
       </div>
 
-      {/* Existing dashboard content */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6">
-        <h2 className="text-lg font-semibold">CRM</h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Manage contacts, pipeline, and follow-ups.
-        </p>
-        {/* …your CRM table/cards… */}
-      </section>
+      {/* Existing dashboard sections */}
+      {/* ... */}
     </main>
   );
 }
