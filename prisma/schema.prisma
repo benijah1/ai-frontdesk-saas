@@ -1,14 +1,11 @@
-pathSlug String @unique @default(cuid())
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  // Use a literal provider (Prisma does NOT allow env() here)
+  // Prisma requires a literal here (no env() for provider)
   provider = "postgresql"
-  url      = env("DATABASE_URL")        // e.g. Vercel Postgres / Neon
-  // Optional: uncomment if you use migrations during CI with a separate shadow DB
+  url      = env("DATABASE_URL") // e.g., Vercel Postgres / Neon
   // shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
@@ -23,51 +20,55 @@ model User {
   isAdmin       Boolean   @default(false)
   bypassPaywall Boolean   @default(false)
   createdAt     DateTime  @default(now())
-  tenantId      String?
-  tenant        Tenant?   @relation(fields: [tenantId], references: [id], onDelete: SetNull)
-  sessions      Session[]
-  accounts      Account[]
+
+  // Multi-tenant
+  tenantId String?
+  tenant   Tenant?   @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  // Auth relations
+  sessions Session[]
+  accounts Account[]
+
+  @@index([tenantId])
 }
 
 model Service {
-id String @id @default(cuid())
-tenantId String
-name String
-slug String
-price Decimal? @db.Decimal(10,2)
-durationM Int? // minutes
-description String?
-active Boolean @default(true)
-createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  slug        String
+  price       Decimal? @db.Decimal(10, 2)
+  durationM   Int?         // minutes
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
 
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-tenant Tenant @relation(fields: [tenantId], references: [id])
-
-
-@@unique([tenantId, slug])
+  @@unique([tenantId, slug])
+  @@index([tenantId])
 }
 
 model Tenant {
-id String @id @default(cuid())
-name String
-subdomain String? @unique // e.g. "fixit" => https://fixit.yourapp.com
-pathSlug String @unique @default("tenant_" + cuid()) // fallback path: /t/[pathSlug]
-logoUrl String?
-primaryColor String? @default("#0ea5e9")
-secondaryColor String? @default("#111827")
-accentColor String? @default("#22d3ee")
-brandFont String? @default("Inter")
-phone String?
-email String?
-address String?
-hoursJson String? // JSON stringified business hours structure
-greeting String? // default AI greeting / opening line
-voice String? // optional voice name/key
-createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  name           String
+  subdomain      String?  @unique // e.g. "fixit" => https://fixit.yourapp.com
+  pathSlug       String   @unique @default(cuid()) // fallback path: /t/[pathSlug]
+  logoUrl        String?
+  primaryColor   String?  @default("#0ea5e9")
+  secondaryColor String?  @default("#111827")
+  accentColor    String?  @default("#22d3ee")
+  brandFont      String?  @default("Inter")
+  phone          String?
+  email          String?
+  address        String?
+  hoursJson      String?  // JSON stringified business hours structure
+  greeting       String?  // default AI greeting / opening line
+  voice          String?  // optional voice name/key
+  createdAt      DateTime @default(now())
 
-
-services Service[]
-users User[]
+  services Service[]
+  users    User[]
 }
 
 model Session {
@@ -75,28 +76,30 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([sessionToken])
 }
 
 model Account {
-  id                         String  @id @default(cuid())
-  userId                     String
-  type                       String
-  provider                   String
-  providerAccountId          String
-  refresh_token              String? @db.Text
-  access_token               String? @db.Text
-  expires_at                 Int?
-  token_type                 String?
-  scope                      String?
-  id_token                   String? @db.Text
-  session_state              String?
-  oauth_token_secret         String? @db.Text
-  oauth_token                String? @db.Text
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  oauth_token_secret String? @db.Text
+  oauth_token        String? @db.Text
 
-  user                       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@index([userId])
