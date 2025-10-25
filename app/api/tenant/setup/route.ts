@@ -2,8 +2,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
+import { auth } from "@/auth";
 
-// Minimal slugify for path slugs
+export const runtime = "nodejs";
+
+// --- utils ---
 function slugify(input: string) {
   return String(input || "")
     .toLowerCase()
@@ -13,7 +16,6 @@ function slugify(input: string) {
     .replace(/^-+|-+$/g, "")
     .slice(0, 96);
 }
-
 function randomSuffix(len = 6) {
   const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
   let out = "";
@@ -23,108 +25,198 @@ function randomSuffix(len = 6) {
 
 export async function POST(req: Request) {
   try {
+    const session = await auth();
+    const userId = session?.user?.id;
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
 
-    // Expecting at least a name; optionally subdomain, pathSlug, primaryColor, services, branding, etc.
-    const {
-      name,
-      subdomain: subdomainRaw,
-      pathSlug: pathSlugRaw,
-      primaryColor,
-      services = [],
-      branding = {},
-    } = body ?? {};
+    // Theme / identity
+    const name: string | undefined = typeof body.name === "string" ? body.name.trim() : undefined;
+    const subdomainRaw: string | undefined =
+      typeof body.subdomain === "string" ? body.subdomain.trim() : undefined;
+    const pathSlugRaw: string | undefined =
+      typeof body.pathSlug === "string" ? body.pathSlug.trim() : undefined;
+    const primaryColor: string | undefined =
+      typeof body.primaryColor === "string" ? body.primaryColor.trim() : undefined;
+    const accentColor: string | undefined =
+      typeof body.accentColor === "string" ? body.accentColor.trim() : undefined;
+    const logoUrl: string | undefined =
+      typeof body.logoUrl === "string" ? body.logoUrl.trim() : undefined;
 
-    if (!name || typeof name !== "string") {
-      return NextResponse.json({ error: "Missing required field: name" }, { status: 400 });
-    }
+    // Business details
+    const phone: string | undefined = typeof body.phone === "string" ? body.phone.trim() : undefined;
+    const websiteUrl: string | undefined =
+      typeof body.websiteUrl === "string" ? body.websiteUrl.trim() : undefined;
+    const licenseNumber: string | undefined =
+      typeof body.licenseNumber === "string" ? body.licenseNumber.trim() : undefined;
 
-    // Prefer caller-provided unique keys; otherwise derive a stable unique pathSlug from name.
-    const desiredSubdomain =
-      typeof subdomainRaw === "string" && subdomainRaw.trim()
-        ? slugify(subdomainRaw)
-        : undefined;
+    const businessDays: string[] = Array.isArray(body.businessDays)
+      ? body.businessDays.filter((d: any) => typeof d === "string" && d.trim()).map((d: string) => d.trim())
+      : [];
 
-    let desiredPathSlug =
-      typeof pathSlugRaw === "string" && pathSlugRaw.trim()
-        ? slugify(pathSlugRaw)
-        : slugify(name);
+    const openTime: string | null =
+      typeof body.openTime === "string" && body.openTime.trim() ? body.openTime.trim() : null;
+    const closeTime: string | null =
+      typeof body.closeTime === "string" && body.closeTime.trim() ? body.closeTime.trim() : null;
 
-    if (!desiredPathSlug) desiredPathSlug = `t-${randomSuffix(10)}`;
+    const awards: string[] = Array.isArray(body.awards)
+      ? body.awards.filter((a: any) => typeof a === "string" && a.trim()).map((a: string) => a.trim())
+      : [];
 
-    // Choose a valid unique selector for upsert:
-    const where =
-      desiredSubdomain
-        ? ({ subdomain: desiredSubdomain } as const)
-        : ({ pathSlug: desiredPathSlug } as const);
+    // Services
+    const services: Array<{ name: string; description?: string; price?: number | null }> = Array.isArray(
+      body.services
+    )
+      ? body.services
+          .filter((s: any) => s && typeof s.name === "string" && s.name.trim())
+          .map((s: any) => ({
+            name: s.name.trim(),
+            description: typeof s.description === "string" ? s.description.trim() : undefined,
+            price:
+              typeof s.price === "number"
+                ? s.price
+                : s.price === "" || s.price == null
+                ? null
+                : Number.isFinite(Number(s.price))
+                ? Number(s.price)
+                : null,
+          }))
+      : [];
 
-    // Shape the data for update/create. Adjust fields to match your Tenant model.
-    const tenantData: Prisma.TenantUpdateInput & Prisma.TenantCreateInput = {
-      name,
-      ...(desiredSubdomain ? { subdomain: desiredSubdomain } : {}),
-      pathSlug: desiredPathSlug,
-      ...(primaryColor ? { primaryColor } : {}),
-      ...(("logoUrl" in branding && branding.logoUrl) ? { logoUrl: branding.logoUrl } : {}),
-      ...(("accentColor" in branding && branding.accentColor) ? { accentColor: branding.accentColor } : {}),
-    };
+    // Start animation content
+    const startAnimationHeadlineRaw: string | undefined =
+      typeof body.startAnimationHeadline === "string" ? body.startAnimationHeadline.trim() : undefined;
+    const startAnimationSubtextRaw: string | undefined =
+      typeof body.startAnimationSubtext === "string" ? body.startAnimationSubtext.trim() : undefined;
 
-    // ---- Services (create only on initial tenant creation) ----
-    // Your Service model requires `slug`, so provide it here.
-    let serviceCreates: Prisma.ServiceCreateWithoutTenantInput[] | undefined = undefined;
-
-    if (Array.isArray(services) && services.length > 0) {
-      serviceCreates = services
-        .filter((s: any) => s && typeof s.name === "string" && s.name.trim())
-        .map((s: any) => {
-          const svcName = String(s.name).trim();
-          // Make the service slug scoped by tenant pathSlug to avoid global collisions, if slug is globally unique.
-          const base = `${desiredPathSlug}-${svcName}`;
-          const svcSlug = slugify(base) || `svc-${randomSuffix(8)}`;
-
-          const payload: Prisma.ServiceCreateWithoutTenantInput = {
-            name: svcName,
-            slug: svcSlug,
-            ...(s.description ? { description: String(s.description) } : {}),
-            ...(typeof s.price === "number" ? { price: s.price } : {}),
-          };
-
-          return payload;
-        });
-
-      if (serviceCreates.length === 0) {
-        serviceCreates = undefined;
-      }
-    }
-
-    const createData: Prisma.TenantCreateInput = {
-      name: tenantData.name!,
-      pathSlug: tenantData.pathSlug!,
-      ...(tenantData.subdomain ? { subdomain: tenantData.subdomain as string } : {}),
-      ...(tenantData.primaryColor ? { primaryColor: tenantData.primaryColor as string } : {}),
-      ...(tenantData as any).logoUrl ? { logoUrl: (tenantData as any).logoUrl } : {},
-      ...(tenantData as any).accentColor ? { accentColor: (tenantData as any).accentColor } : {},
-      ...(serviceCreates
-        ? {
-            services: {
-              create: serviceCreates,
-            },
-          }
-        : {}),
-    };
-
-    const tenant = await prisma.tenant.upsert({
-      where,
-      update: tenantData,
-      create: createData,
+    // Load or create tenant for this user
+    let tenant = await prisma.tenant.findFirst({
+      where: { users: { some: { id: userId } } },
       include: { services: true },
     });
 
-    return NextResponse.json({ ok: true, tenant });
+    // Derive path/subdomain
+    const desiredPathSlug = slugify(pathSlugRaw || tenant?.pathSlug || name || `t-${randomSuffix(8)}`) || `t-${randomSuffix(10)}`;
+    const desiredSubdomain = subdomainRaw ? slugify(subdomainRaw) : tenant?.subdomain || undefined;
+
+    // Create tenant if user has none yet
+    if (!tenant) {
+      if (!name) {
+        return NextResponse.json(
+          { error: "Missing required field: name (for initial tenant creation)" },
+          { status: 400 }
+        );
+      }
+
+      // Ensure pathSlug is unique; if conflict, suffix it
+      let pathSlugUnique = desiredPathSlug;
+      // (optional uniqueness check — safe to skip if DB already enforces uniqueness)
+      const existing = await prisma.tenant.findUnique({ where: { pathSlug: pathSlugUnique } }).catch(() => null);
+      if (existing) {
+        pathSlugUnique = `${pathSlugUnique}-${randomSuffix(4)}`;
+      }
+
+      tenant = await prisma.tenant.create({
+        data: {
+          name,
+          pathSlug: pathSlugUnique,
+          ...(desiredSubdomain ? { subdomain: desiredSubdomain } : {}),
+          ...(primaryColor ? { primaryColor } : {}),
+          ...(accentColor ? { accentColor } : {}),
+          ...(logoUrl ? { logoUrl } : {}),
+          users: { connect: { id: userId } }, // attach this user
+        },
+        include: { services: true },
+      });
+    }
+
+    // Compute final start animation content
+    const startAnimationHeadline =
+      startAnimationHeadlineRaw || (name || tenant.name ? `Welcome to ${name || tenant.name}` : "Welcome to our Front Desk");
+    const startAnimationSubtext =
+      startAnimationSubtextRaw || "Ask me about availability, pricing, or booking — I’m here to help.";
+
+    // Update tenant fields
+    const updatedTenant = await prisma.tenant.update({
+      where: { id: tenant.id },
+      data: {
+        ...(name ? { name } : {}),
+        ...(desiredSubdomain ? { subdomain: desiredSubdomain } : {}),
+        ...(desiredPathSlug ? { pathSlug: desiredPathSlug } : {}),
+        ...(primaryColor ? { primaryColor } : {}),
+        ...(accentColor ? { accentColor } : {}),
+        ...(logoUrl ? { logoUrl } : {}),
+        ...(phone ? { phone } : {}),
+        ...(websiteUrl ? { websiteUrl } : {}),
+        ...(licenseNumber ? { licenseNumber } : {}),
+        ...(businessDays.length ? { businessDays } : { businessDays: [] }),
+        openTime,
+        closeTime,
+        ...(awards.length ? { awards } : { awards: [] }),
+        startAnimationHeadline,
+        startAnimationSubtext,
+      },
+      include: { services: true },
+    });
+
+    // ---- Service upsert by slug (keeps existing, updates changed, removes missing) ----
+    // Make desired set keyed by slug
+    const targetBySlug: Record<
+      string,
+      { name: string; description?: string; price?: number | null }
+    > = {};
+
+    for (const s of services) {
+      const base = `${updatedTenant.pathSlug}-${s.name}`;
+      let slug = slugify(base) || `svc-${randomSuffix(8)}`;
+      // If slug collides in this payload, append suffix
+      while (targetBySlug[slug]) slug = `${slug}-${randomSuffix(3)}`;
+      targetBySlug[slug] = { name: s.name, description: s.description, price: s.price ?? null };
+    }
+
+    // Delete services not present anymore
+    const keepSlugs = Object.keys(targetBySlug);
+    await prisma.service.deleteMany({
+      where: {
+        tenantId: updatedTenant.id,
+        ...(keepSlugs.length ? { NOT: { slug: { in: keepSlugs } } } : {}),
+      },
+    });
+
+    // Upsert each desired service
+    for (const [slug, s] of Object.entries(targetBySlug)) {
+      await prisma.service.upsert({
+        where: { slug }, // assumes slug is globally unique
+        update: {
+          name: s.name,
+          description: s.description ?? null,
+          price: s.price == null ? null : s.price,
+        },
+        create: {
+          tenantId: updatedTenant.id,
+          slug,
+          name: s.name,
+          description: s.description ?? null,
+          price: s.price == null ? null : s.price,
+        },
+      });
+    }
+
+    // Return the fresh tenant w/ services
+    const finalTenant = await prisma.tenant.findUnique({
+      where: { id: updatedTenant.id },
+      include: { services: true },
+    });
+
+    return NextResponse.json({ ok: true, tenant: finalTenant });
   } catch (err: any) {
     console.error("Tenant setup error:", err);
     return NextResponse.json(
       { error: "Failed to setup tenant", detail: err?.message ?? String(err) },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
