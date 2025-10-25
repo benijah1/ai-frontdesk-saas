@@ -67,6 +67,8 @@ model Tenant {
   greeting       String?  // default AI greeting / opening line
   voice          String?  // optional voice name/key
   createdAt      DateTime @default(now())
+  startAnimationHeadline  String?
+  startAnimationSubtext   String?
 
   services Service[]
   users    User[]
