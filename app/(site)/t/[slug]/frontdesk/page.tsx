@@ -1,98 +1,241 @@
 // app/(site)/t/[slug]/frontdesk/page.tsx
-import { prisma } from "@/lib/prisma";
+import React from "react";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { PrismaClient, type Service as PrismaService, type Tenant as PrismaTenant } from "@prisma/client";
 
-type PageProps = {
-  params: { slug: string };
+// --- Prisma singleton to avoid hot-reload instantiation in dev ---
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+  });
+
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+
+// --- Types derived from Prisma ---
+type Service = PrismaService;
+type Tenant = PrismaTenant & { services: Service[] };
+
+// --- Helpers ---
+const fmtUSD = (n: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+
+const fmtDuration = (mins?: number | null) => {
+  if (!mins || mins <= 0) return null;
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m ? `${h} hr ${m} min` : `${h} hr`;
 };
 
-function toTheme(t: {
-  primaryColor?: string | null;
-  secondaryColor?: string | null;
-  accentColor?: string | null;
-  brandFont?: string | null;
-  logoUrl?: string | null;
-}) {
+// --- Data ---
+async function getTenantBySlug(slug: string): Promise<Tenant | null> {
+  if (!slug) return null;
+  return prisma.tenant.findFirst({
+    where: { OR: [{ pathSlug: slug }, { subdomain: slug }] }, // support either field if present
+    include: { services: { orderBy: { name: "asc" } } },
+  }) as unknown as Promise<Tenant | null>;
+}
+
+// --- Metadata ---
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}): Promise<Metadata> {
+  const tenant = await getTenantBySlug(params.slug);
+  if (!tenant) {
+    return { title: "Front Desk — Not Found" };
+  }
+  const title = `${tenant.name} — Front Desk`;
+  const description =
+    "Explore services, pricing, and booking details powered by AI Front Desk.";
   return {
-    primary: t.primaryColor || "#0ea5e9",
-    secondary: t.secondaryColor || "#111827",
-    accent: t.accentColor || "#22d3ee",
-    font: t.brandFont || "Inter",
-    logo: t.logoUrl || "",
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+    },
   };
 }
 
-export default async function FrontDeskPage({ params }: PageProps) {
-  const slug = decodeURIComponent(params.slug || "");
+// --- Page ---
+export default async function FrontdeskPage({
+  params,
+}: {
+  params: { slug: string };
+}) {
+  const tenant = await getTenantBySlug(params.slug);
 
-  // Accept either the vanity subdomain-like slug or the generated pathSlug
-  const tenant = await prisma.tenant.findFirst({
-    where: {
-      OR: [{ pathSlug: slug }, { subdomain: slug }],
-    },
-    include: {
-      services: true,
-    },
-  });
+  if (!tenant) {
+    notFound();
+  }
 
-  if (!tenant) return notFound();
-
-  const theme = toTheme(tenant);
+  const services: Service[] = Array.isArray(tenant.services) ? (tenant.services as Service[]) : [];
 
   return (
     <main
+      className="min-h-screen w-full"
       style={{
-        fontFamily: theme.font,
-        background: theme.secondary,
-        color: "white",
-        minHeight: "100vh",
+        // Optional: use tenant.primaryColor as an accent if present
+        // Fallback to a tasteful gradient
+        background:
+          tenant.primaryColor
+            ? `radial-gradient(1200px 600px at 10% -10%, ${tenant.primaryColor}22, transparent 60%), radial-gradient(1000px 500px at 110% 10%, ${tenant.primaryColor}1A, transparent 60%), #0A0B10`
+            : "radial-gradient(1200px 600px at 10% -10%, rgba(99,102,241,0.15), transparent 60%), radial-gradient(1000px 500px at 110% 10%, rgba(14,165,233,0.12), transparent 60%), #0A0B10",
       }}
     >
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          padding: "16px 20px",
-          background: theme.primary,
-        }}
-      >
-        {theme.logo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={theme.logo} alt={`${tenant.name} logo`} height={32} />
-        ) : null}
-        <h1 style={{ fontSize: 20, fontWeight: 700 }}>{tenant.name}</h1>
-      </header>
+      <section className="container mx-auto max-w-6xl px-6 py-10 text-white">
+        <header className="mb-10">
+          <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 backdrop-blur">
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+            <span className="text-sm/6 text-white/80">AI Front Desk</span>
+          </div>
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+            {tenant.name}
+          </h1>
+          {tenant.subdomain && (
+            <p className="mt-1 text-white/60">
+              subdomain: <span className="font-mono">{tenant.subdomain}</span>
+            </p>
+          )}
+          {tenant.pathSlug && (
+            <p className="text-white/60">
+              path: <span className="font-mono">/t/{tenant.pathSlug}/frontdesk</span>
+            </p>
+          )}
+          <p className="mt-4 max-w-3xl text-white/70">
+            Browse services, pricing, and typical durations. When you’re ready, pick a
+            service to start the conversation with our AI Front Desk.
+          </p>
+        </header>
 
-      <section style={{ padding: 20 }}>
-        <p style={{ opacity: 0.9, marginBottom: 16 }}>
-          {tenant.greeting || "Hi! How can I help?"}
-        </p>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-            gap: 16,
-          }}
-        >
-          {tenant.services.map((s) => (
-            <div
-              key={s.id}
-              style={{
-                background: "#0f172a",
-                border: `1px solid ${theme.accent}`,
-                borderRadius: 12,
-                padding: 14,
-              }}
-            >
-              <div style={{ fontWeight: 600, marginBottom: 6 }}>{s.name}</div>
-              {s.description ? (
-                <div style={{ fontSize: 13, opacity: 0.85 }}>{s.description}</div>
-              ) : null}
+        {/* Services */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {services.length === 0 && (
+            <div className="col-span-full rounded-2xl border border-white/10 bg-white/5 p-6 text-white/70">
+              No services are available yet.
             </div>
-          ))}
+          )}
+
+          {services.map((s: Service) => {
+            const price =
+              typeof s.price === "number" && s.price > 0 ? fmtUSD(s.price) : null;
+            const duration = fmtDuration(s.durationMinutes ?? undefined);
+
+            return (
+              <article
+                key={s.id}
+                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition hover:border-white/20"
+              >
+                {/* Thumb */}
+                <div className="mb-4 aspect-[16/9] w-full overflow-hidden rounded-xl bg-white/5">
+                  {s.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={s.imageUrl}
+                      alt={s.name}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-white/30">
+                      No Image
+                    </div>
+                  )}
+                </div>
+
+                {/* Title */}
+                <h3 className="line-clamp-2 text-lg font-medium">{s.name}</h3>
+
+                {/* Description */}
+                {s.shortDescription ? (
+                  <p className="mt-2 line-clamp-3 text-sm text-white/70">
+                    {s.shortDescription}
+                  </p>
+                ) : s.description ? (
+                  <p className="mt-2 line-clamp-3 text-sm text-white/70">
+                    {s.description}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm text-white/50">No description provided.</p>
+                )}
+
+                {/* Meta */}
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-white/80">
+                  {price && (
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                      {price}
+                    </span>
+                  )}
+                  {duration && (
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                      {duration}
+                    </span>
+                  )}
+                  {s.pathSlug && (
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 font-mono text-xs">
+                      /{s.pathSlug}
+                    </span>
+                  )}
+                </div>
+
+                {/* CTA */}
+                <div className="mt-5">
+                  <a
+                    href={
+                      s.pathSlug
+                        ? `/t/${tenant.pathSlug ?? params.slug}/frontdesk/${encodeURIComponent(
+                            s.pathSlug
+                          )}`
+                        : `#`
+                    }
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-disabled={!s.pathSlug}
+                    onClick={(e) => {
+                      if (!s.pathSlug) e.preventDefault();
+                    }}
+                  >
+                    Start
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      className="opacity-80"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M5 12h14M13 5l7 7-7 7"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </a>
+                </div>
+
+                {/* Subtle gradient hover */}
+                <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                  style={{
+                    background:
+                      "radial-gradient(600px 200px at 0% 0%, rgba(255,255,255,0.06), transparent 70%)",
+                  }}
+                />
+              </article>
+            );
+          })}
         </div>
+
+        {/* Footer / Help */}
+        <footer className="mt-14 text-sm text-white/50">
+          Having trouble? Contact support and mention tenant ID{" "}
+          <span className="font-mono text-white/60">{tenant.id}</span>.
+        </footer>
       </section>
     </main>
   );
