@@ -5,23 +5,30 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Base resets / theme */
+/* ---------------- Base + Theme ---------------- */
 @layer base {
   html, body {
     height: 100%;
     max-width: 100%;
-    overflow-x: hidden; /* Prevent horizontal scroll from rogue elements */
+    overflow-x: hidden;
   }
 
+  /* LIGHT default (readable on white cards) */
   body {
-    @apply bg-[#0A0B10] text-white antialiased;
+    background-color: #f9fafb; /* slate-50 */
+    color: #111827;            /* gray-900 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* DARK overrides when <html class="dark"> (via next-themes) */
+  .dark body {
+    background-color: #0a0b10; /* your dark surface */
+    color: #f8fafc;            /* slate-50 */
   }
 
   /* Media should never cause layout overflow */
-  img, video, canvas, svg {
-    max-width: 100%;
-    height: auto;
-  }
+  img, video, canvas, svg { max-width: 100%; height: auto; }
 
   ::selection {
     background: rgba(99, 102, 241, 0.35); /* indigo-500 w/ alpha */
@@ -29,27 +36,45 @@
   }
 }
 
-/* Utility enhancements */
+/* ---------------- Design tokens (utilities) ---------------- */
 @layer utilities {
-  /* Smooth container behavior across the site */
-  .container-safe {
-    @apply mx-auto max-w-screen-xl px-4;
+  :root {
+    /* light */
+    --rs-bg: 249, 250, 251;   /* slate-50 */
+    --rs-fg: 17, 24, 39;      /* gray-900 */
+    --rs-muted: 107, 114, 128;/* gray-500 */
+    --rs-card: 255, 255, 255; /* white */
+    --rs-card-fg: 17, 24, 39; /* gray-900 */
+    --rs-border: 226, 232, 240; /* slate-200 */
   }
+  .dark :root {
+    /* dark */
+    --rs-bg: 10, 11, 16;      /* your dark */
+    --rs-fg: 248, 250, 252;   /* slate-50 */
+    --rs-muted: 148, 163, 184;/* slate-400 */
+    --rs-card: 15, 23, 42;    /* deep slate */
+    --rs-card-fg: 248, 250, 252;
+    --rs-border: 51, 65, 85;  /* slate-700 */
+  }
+
+  /* Helpers your components can safely use */
+  .bg-background { background-color: rgb(var(--rs-bg)) !important; }
+  .text-foreground { color: rgb(var(--rs-fg)) !important; }
+  .text-muted-foreground { color: rgb(var(--rs-muted)) !important; }
+  .bg-card { background-color: rgb(var(--rs-card)) !important; }
+  .text-card-foreground { color: rgb(var(--rs-card-fg)) !important; }
+  .border-border { border-color: rgb(var(--rs-border)) !important; }
+
+  /* Smooth container behavior */
+  .container-safe { @apply mx-auto max-w-screen-xl px-4; }
 }
 
-/* --- TEMP LOGIN READABILITY PATCH --- */
+/* --- Login readability (kept) --- */
 [data-login] input,
 [data-login] input::placeholder,
 [data-login] .placeholder\:text-foreground::placeholder {
-  color: #111827 !important; /* Tailwind gray-900 */
+  color: #111827 !important; /* gray-900 */
 }
-
-[data-login] input {
-  color: #111827 !important;
-}
-
+[data-login] input { color: #111827 !important; }
 [data-login] .muted,
-[data-login] .text-muted-foreground {
-  color: #6B7280 !important; /* Tailwind gray-500 */
-}
-
+[data-login] .text-muted-foreground { color: #6B7280 !important; }
