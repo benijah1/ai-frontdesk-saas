@@ -7,6 +7,15 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
+import { authOptions } from "../auth-options";
+
+const handler = NextAuth(authOptions);
+
+export { handler as GET, handler as POST };
+
+// Required for bcrypt + Prisma on Vercel
+export const runtime = "nodejs";
+
 // Exported so other files (e.g., /auth.ts) can import it
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
