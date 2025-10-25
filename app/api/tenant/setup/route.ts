@@ -86,7 +86,7 @@ export async function POST(req: Request) {
           }))
       : [];
 
-    // Start animation content
+    // Start animation content — parsed but not written to DB unless your schema has these fields.
     const startAnimationHeadlineRaw: string | undefined =
       typeof body.startAnimationHeadline === "string" ? body.startAnimationHeadline.trim() : undefined;
     const startAnimationSubtextRaw: string | undefined =
@@ -99,7 +99,8 @@ export async function POST(req: Request) {
     });
 
     // Derive path/subdomain
-    const desiredPathSlug = slugify(pathSlugRaw || tenant?.pathSlug || name || `t-${randomSuffix(8)}`) || `t-${randomSuffix(10)}`;
+    const desiredPathSlug =
+      slugify(pathSlugRaw || tenant?.pathSlug || name || `t-${randomSuffix(8)}`) || `t-${randomSuffix(10)}`;
     const desiredSubdomain = subdomainRaw ? slugify(subdomainRaw) : tenant?.subdomain || undefined;
 
     // Create tenant if user has none yet
@@ -113,7 +114,6 @@ export async function POST(req: Request) {
 
       // Ensure pathSlug is unique; if conflict, suffix it
       let pathSlugUnique = desiredPathSlug;
-      // (optional uniqueness check — safe to skip if DB already enforces uniqueness)
       const existing = await prisma.tenant.findUnique({ where: { pathSlug: pathSlugUnique } }).catch(() => null);
       if (existing) {
         pathSlugUnique = `${pathSlugUnique}-${randomSuffix(4)}`;
@@ -122,101 +122,3 @@ export async function POST(req: Request) {
       tenant = await prisma.tenant.create({
         data: {
           name,
-          pathSlug: pathSlugUnique,
-          ...(desiredSubdomain ? { subdomain: desiredSubdomain } : {}),
-          ...(primaryColor ? { primaryColor } : {}),
-          ...(accentColor ? { accentColor } : {}),
-          ...(logoUrl ? { logoUrl } : {}),
-          users: { connect: { id: userId } }, // attach this user
-        },
-        include: { services: true },
-      });
-    }
-
-    // Compute final start animation content
-    const startAnimationHeadline =
-      startAnimationHeadlineRaw || (name || tenant.name ? `Welcome to ${name || tenant.name}` : "Welcome to our Front Desk");
-    const startAnimationSubtext =
-      startAnimationSubtextRaw || "Ask me about availability, pricing, or booking — I’m here to help.";
-
-    // Update tenant fields
-    const updatedTenant = await prisma.tenant.update({
-      where: { id: tenant.id },
-      data: {
-        ...(name ? { name } : {}),
-        ...(desiredSubdomain ? { subdomain: desiredSubdomain } : {}),
-        ...(desiredPathSlug ? { pathSlug: desiredPathSlug } : {}),
-        ...(primaryColor ? { primaryColor } : {}),
-        ...(accentColor ? { accentColor } : {}),
-        ...(logoUrl ? { logoUrl } : {}),
-        ...(phone ? { phone } : {}),
-        ...(websiteUrl ? { websiteUrl } : {}),
-        ...(licenseNumber ? { licenseNumber } : {}),
-        ...(businessDays.length ? { businessDays } : { businessDays: [] }),
-        openTime,
-        closeTime,
-        ...(awards.length ? { awards } : { awards: [] }),
-        startAnimationHeadline,
-        startAnimationSubtext,
-      },
-      include: { services: true },
-    });
-
-    // ---- Service upsert by slug (keeps existing, updates changed, removes missing) ----
-    // Make desired set keyed by slug
-    const targetBySlug: Record<
-      string,
-      { name: string; description?: string; price?: number | null }
-    > = {};
-
-    for (const s of services) {
-      const base = `${updatedTenant.pathSlug}-${s.name}`;
-      let slug = slugify(base) || `svc-${randomSuffix(8)}`;
-      // If slug collides in this payload, append suffix
-      while (targetBySlug[slug]) slug = `${slug}-${randomSuffix(3)}`;
-      targetBySlug[slug] = { name: s.name, description: s.description, price: s.price ?? null };
-    }
-
-    // Delete services not present anymore
-    const keepSlugs = Object.keys(targetBySlug);
-    await prisma.service.deleteMany({
-      where: {
-        tenantId: updatedTenant.id,
-        ...(keepSlugs.length ? { NOT: { slug: { in: keepSlugs } } } : {}),
-      },
-    });
-
-    // Upsert each desired service
-    for (const [slug, s] of Object.entries(targetBySlug)) {
-      await prisma.service.upsert({
-        where: { slug }, // assumes slug is globally unique
-        update: {
-          name: s.name,
-          description: s.description ?? null,
-          price: s.price == null ? null : s.price,
-        },
-        create: {
-          tenantId: updatedTenant.id,
-          slug,
-          name: s.name,
-          description: s.description ?? null,
-          price: s.price == null ? null : s.price,
-        },
-      });
-    }
-
-    // Return the fresh tenant w/ services
-    const finalTenant = await prisma.tenant.findUnique({
-      where: { id: updatedTenant.id },
-      include: { services: true },
-    });
-
-    return NextResponse.json({ ok: true, tenant: finalTenant });
-  } catch (err: any) {
-    console.error("Tenant setup error:", err);
-    return NextResponse.json(
-      { error: "Failed to setup tenant", detail: err?.message ?? String(err) },
-      { status: 500 }
-    );
-  }
-}
