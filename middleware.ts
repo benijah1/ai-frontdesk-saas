@@ -5,6 +5,5 @@ export const config = {
     "/crm/:path*",
     "/calls/:path*",
     "/settings/:path*",
-    "/crm/:path*",
   ],
 };
