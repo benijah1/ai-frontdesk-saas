@@ -4,6 +4,16 @@ import { useEffect, useMemo, useState } from "react";
 
 type ServiceRow = { name: string; description?: string; price?: number | "" };
 
+type TenantInitial = {
+  name?: string;
+  subdomain?: string | null;
+  pathSlug?: string | null;
+  primaryColor?: string | null;
+  logoUrl?: string | null;
+  accentColor?: string | null;
+  services?: { name: string; description?: string | null; price?: number | null }[];
+};
+
 function slugify(input: string) {
   return String(input || "")
     .toLowerCase()
@@ -14,33 +24,40 @@ function slugify(input: string) {
     .slice(0, 64);
 }
 
-export default function FrontDeskSetupForm() {
-  const [name, setName] = useState("");
-  const [subdomain, setSubdomain] = useState("");
-  const [pathSlug, setPathSlug] = useState("");
-  const [primaryColor, setPrimaryColor] = useState("#0ea5e9");
-  const [logoUrl, setLogoUrl] = useState("");
-  const [accentColor, setAccentColor] = useState("");
-  const [services, setServices] = useState<ServiceRow[]>([
-    { name: "", description: "", price: "" },
-  ]);
+export default function FrontDeskSetupForm({ initialData }: { initialData?: TenantInitial }) {
+  const [name, setName] = useState(initialData?.name ?? "");
+  const [subdomain, setSubdomain] = useState((initialData?.subdomain ?? "") || "");
+  const [pathSlug, setPathSlug] = useState((initialData?.pathSlug ?? "") || "");
+  const [primaryColor, setPrimaryColor] = useState(initialData?.primaryColor ?? "#0ea5e9");
+  const [logoUrl, setLogoUrl] = useState(initialData?.logoUrl ?? "");
+  const [accentColor, setAccentColor] = useState(initialData?.accentColor ?? "");
+  const [services, setServices] = useState<ServiceRow[]>(
+    (initialData?.services?.map((s) => ({
+      name: s.name,
+      description: s.description ?? "",
+      price: typeof s.price === "number" ? s.price : "",
+    })) ??
+      [{ name: "", description: "", price: "" }]) as ServiceRow[]
+  );
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "idle" | "ok" | "err"; text?: string }>({
     type: "idle",
   });
 
-  // Derive defaults as the user types
+  // Auto-suggest slug/subdomain from name if those fields are still blank
   useEffect(() => {
     if (!subdomain) setSubdomain(slugify(name));
     if (!pathSlug) setPathSlug(slugify(name));
-  }, [name]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name]);
+
+  // Keep user-entered slugs normalized
+  useEffect(() => setSubdomain((s) => slugify(s)), [subdomain]);
+  useEffect(() => setPathSlug((s) => slugify(s)), [pathSlug]);
 
   const hostPreview = useMemo(() => {
-    if (typeof window === "undefined") return "";
-    // If you use wildcard subdomains in production, this gives a realistic preview.
-    const baseHost = window.location.host
-      .replace(/^www\./, "")
-      .replace(/^app\./, "");
+    if (typeof window === "undefined") return { subdomainUrl: "", pathUrl: "" };
+    const baseHost = window.location.host.replace(/^www\./, "").replace(/^app\./, "");
     const protocol = window.location.protocol || "https:";
     const sd = subdomain || "your-subdomain";
     const slug = pathSlug || "your-slug";
@@ -66,13 +83,33 @@ export default function FrontDeskSetupForm() {
     setServices((rows) => rows.filter((_, i) => i !== idx));
   }
 
+  function normalizeServices(input: ServiceRow[]) {
+    return input
+      .map((s) => {
+        const nm = (s.name || "").trim();
+        const desc = (s.description || "").trim();
+        let price: number | undefined = undefined;
+        if (typeof s.price === "number") price = s.price;
+        else if (s.price !== "" && !Number.isNaN(Number(s.price))) price = Number(s.price);
+        return {
+          name: nm,
+          description: desc || undefined,
+          price,
+        };
+      })
+      .filter((s) => s.name);
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setMsg({ type: "idle" });
     setSaving(true);
     try {
+      const cleanName = name.trim();
+      if (!cleanName) throw new Error("Business name is required.");
+
       const payload = {
-        name,
+        name: cleanName,
         subdomain: subdomain ? slugify(subdomain) : undefined,
         pathSlug: pathSlug ? slugify(pathSlug) : undefined,
         primaryColor,
@@ -80,20 +117,7 @@ export default function FrontDeskSetupForm() {
           logoUrl: logoUrl || undefined,
           accentColor: accentColor || undefined,
         },
-        services: services
-          .map((s) => ({
-            name: (s.name || "").trim(),
-            description: (s.description || "").trim() || undefined,
-            price:
-              typeof s.price === "number"
-                ? s.price
-                : s.price === ""
-                ? undefined
-                : Number.isNaN(Number(s.price))
-                ? undefined
-                : Number(s.price),
-          }))
-          .filter((s) => s.name),
+        services: normalizeServices(services),
       };
 
       const res = await fetch("/api/tenant/setup", {
@@ -142,10 +166,10 @@ export default function FrontDeskSetupForm() {
               <span className="mb-1 block text-sm font-medium">Primary color</span>
               <input
                 type="color"
-                value={primaryColor}
+                value={primaryColor || "#0ea5e9"}
                 onChange={(e) => setPrimaryColor(e.target.value)}
                 className="h-10 w-full cursor-pointer rounded-md border border-slate-300 px-2 py-1"
-                title={primaryColor}
+                title={primaryColor || "#0ea5e9"}
               />
             </label>
 
