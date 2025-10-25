@@ -2,23 +2,29 @@
 import React from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { PrismaClient, type Service as PrismaService, type Tenant as PrismaTenant } from "@prisma/client";
+import {
+  PrismaClient,
+  type Service as PrismaService,
+  type Tenant as PrismaTenant,
+  Prisma,
+} from "@prisma/client";
 
-// --- Prisma singleton (not exported) ---
+// ---- Prisma singleton (not exported) ----
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
   });
-
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
-// --- Types derived from Prisma ---
+// ---- Types derived from Prisma ----
+// Your Service currently looks like:
+// { id, name, createdAt, tenantId, price: Decimal | null, description: string | null, slug: string, durationM: number | null, active: boolean }
 type Service = PrismaService;
 type Tenant = PrismaTenant & { services: Service[] };
 
-// --- Helpers ---
+// ---- Helpers ----
 const fmtUSD = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 
@@ -30,24 +36,25 @@ const fmtDuration = (mins?: number | null) => {
   return m ? `${h} hr ${m} min` : `${h} hr`;
 };
 
-// --- Data ---
+const decimalToNumber = (d: Prisma.Decimal | number | null) => {
+  if (d === null || d === undefined) return null;
+  // Prisma.Decimal is an object; Number() safely converts it
+  return typeof d === "object" ? Number(d as Prisma.Decimal) : (d as number);
+};
+
+// ---- Data ----
 async function getTenantBySlug(slug: string): Promise<Tenant | null> {
   if (!slug) return null;
-  return prisma.tenant.findFirst({
+  return (await prisma.tenant.findFirst({
     where: { OR: [{ pathSlug: slug }, { subdomain: slug }] },
-    include: { services: { orderBy: { name: "asc" } } },
-  }) as unknown as Promise<Tenant | null>;
+    include: { services: { where: { active: true }, orderBy: { name: "asc" } } },
+  })) as Tenant | null;
 }
 
-// --- Metadata ---
-export async function generateMetadata({
-  params,
-}: {
-  params: { slug: string };
-}): Promise<Metadata> {
+// ---- Metadata ----
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const tenant = await getTenantBySlug(params.slug);
   if (!tenant) return { title: "Front Desk — Not Found" };
-
   const title = `${tenant.name} — Front Desk`;
   const description = "Explore services, pricing, and booking details powered by AI Front Desk.";
   return {
@@ -57,12 +64,8 @@ export async function generateMetadata({
   };
 }
 
-// --- Page ---
-export default async function FrontdeskPage({
-  params,
-}: {
-  params: { slug: string };
-}) {
+// ---- Page ----
+export default async function FrontdeskPage({ params }: { params: { slug: string } }) {
   const tenant = await getTenantBySlug(params.slug);
   if (!tenant) notFound();
 
@@ -83,9 +86,7 @@ export default async function FrontdeskPage({
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
             <span className="text-sm/6 text-white/80">AI Front Desk</span>
           </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-            {tenant.name}
-          </h1>
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">{tenant.name}</h1>
           {tenant.subdomain && (
             <p className="mt-1 text-white/60">
               subdomain: <span className="font-mono">{tenant.subdomain}</span>
@@ -97,8 +98,8 @@ export default async function FrontdeskPage({
             </p>
           )}
           <p className="mt-4 max-w-3xl text-white/70">
-            Browse services, pricing, and typical durations. When you’re ready, pick a
-            service to start the conversation with our AI Front Desk.
+            Browse services, pricing, and typical durations. When you’re ready, pick a service to start the
+            conversation with our AI Front Desk.
           </p>
         </header>
 
@@ -111,37 +112,25 @@ export default async function FrontdeskPage({
           )}
 
           {services.map((s: Service) => {
-            const price = typeof s.price === "number" && s.price > 0 ? fmtUSD(s.price) : null;
-            const duration = fmtDuration(s.durationMinutes ?? undefined);
+            const priceNum = decimalToNumber(s.price);
+            const price = priceNum !== null && priceNum > 0 ? fmtUSD(priceNum) : null;
+            const duration = fmtDuration(s.durationM ?? null);
 
             return (
               <article
                 key={s.id}
                 className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition hover:border-white/20"
               >
-                {/* Thumb */}
+                {/* Thumb (placeholder since image field not in schema) */}
                 <div className="mb-4 aspect-[16/9] w-full overflow-hidden rounded-xl bg-white/5">
-                  {s.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={s.imageUrl}
-                      alt={s.name}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-white/30">
-                      No Image
-                    </div>
-                  )}
+                  <div className="flex h-full w-full items-center justify-center text-white/30">Service</div>
                 </div>
 
                 {/* Title */}
                 <h3 className="line-clamp-2 text-lg font-medium">{s.name}</h3>
 
                 {/* Description */}
-                {s.shortDescription ? (
-                  <p className="mt-2 line-clamp-3 text-sm text-white/70">{s.shortDescription}</p>
-                ) : s.description ? (
+                {s.description ? (
                   <p className="mt-2 line-clamp-3 text-sm text-white/70">{s.description}</p>
                 ) : (
                   <p className="mt-2 text-sm text-white/50">No description provided.</p>
@@ -159,9 +148,9 @@ export default async function FrontdeskPage({
                       {duration}
                     </span>
                   )}
-                  {s.pathSlug && (
+                  {s.slug && (
                     <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 font-mono text-xs">
-                      /{s.pathSlug}
+                      /{s.slug}
                     </span>
                   )}
                 </div>
@@ -170,14 +159,14 @@ export default async function FrontdeskPage({
                 <div className="mt-5">
                   <a
                     href={
-                      s.pathSlug
-                        ? `/t/${tenant.pathSlug ?? params.slug}/frontdesk/${encodeURIComponent(s.pathSlug)}`
+                      s.slug
+                        ? `/t/${tenant.pathSlug ?? params.slug}/frontdesk/${encodeURIComponent(s.slug)}`
                         : `#`
                     }
                     className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
-                    aria-disabled={!s.pathSlug}
+                    aria-disabled={!s.slug}
                     onClick={(e) => {
-                      if (!s.pathSlug) e.preventDefault();
+                      if (!s.slug) e.preventDefault();
                     }}
                   >
                     Start
