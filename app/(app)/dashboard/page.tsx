@@ -1,21 +1,24 @@
+// app/(app)/dashboard/page.tsx
+import FrontDeskSetupForm from "@/components/FrontDeskSetupForm";
+
 export default function DashboardPage() {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-xl border bg-white p-4">
-          <div className="font-semibold">Today’s Calls</div>
-          <div className="text-3xl mt-2">0</div>
-        </div>
-        <div className="rounded-xl border bg-white p-4">
-          <div className="font-semibold">New Leads</div>
-          <div className="text-3xl mt-2">0</div>
-        </div>
-        <div className="rounded-xl border bg-white p-4">
-          <div className="font-semibold">Bookings</div>
-          <div className="text-3xl mt-2">0</div>
-        </div>
+    <main className="mx-auto max-w-6xl px-4 py-6">
+      <h1 className="mb-6 text-2xl font-semibold">Welcome</h1>
+
+      {/* Front Desk Setup */}
+      <div className="mb-8">
+        <FrontDeskSetupForm />
       </div>
-    </div>
+
+      {/* Existing dashboard content */}
+      <section className="rounded-xl border border-slate-200 bg-white p-6">
+        <h2 className="text-lg font-semibold">CRM</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Manage contacts, pipeline, and follow-ups.
+        </p>
+        {/* …your CRM table/cards… */}
+      </section>
+    </main>
   );
 }
