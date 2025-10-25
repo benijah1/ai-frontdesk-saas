@@ -47,3 +47,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     </html>
   );
 }
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
