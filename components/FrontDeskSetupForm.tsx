@@ -2,16 +2,25 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type ServiceRow = { name: string; description?: string; price?: number | "" };
-
-type TenantInitial = {
-  name?: string;
+type ServiceRow = { id?: string; name: string; description?: string; price?: number | "" };
+type TenantLike = {
+  id: string;
+  name?: string | null;
   subdomain?: string | null;
   pathSlug?: string | null;
   primaryColor?: string | null;
-  logoUrl?: string | null;
   accentColor?: string | null;
-  services?: { name: string; description?: string | null; price?: number | null }[];
+  logoUrl?: string | null;
+  phone?: string | null;
+  websiteUrl?: string | null;
+  licenseNumber?: string | null;
+  businessDays?: string[] | null;
+  openTime?: string | null;
+  closeTime?: string | null;
+  awards?: string[] | null;
+  startAnimationHeadline?: string | null;
+  startAnimationSubtext?: string | null;
+  services?: ServiceRow[];
 };
 
 function slugify(input: string) {
@@ -24,288 +33,286 @@ function slugify(input: string) {
     .slice(0, 64);
 }
 
-export default function FrontDeskSetupForm({ initialData }: { initialData?: TenantInitial }) {
+const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+export default function FrontDeskSetupForm({ initialData }: { initialData?: Partial<TenantLike> }) {
   const [name, setName] = useState(initialData?.name ?? "");
-  const [subdomain, setSubdomain] = useState((initialData?.subdomain ?? "") || "");
-  const [pathSlug, setPathSlug] = useState((initialData?.pathSlug ?? "") || "");
+  const [subdomain, setSubdomain] = useState(initialData?.subdomain ?? "");
+  const [pathSlug, setPathSlug] = useState(initialData?.pathSlug ?? "");
   const [primaryColor, setPrimaryColor] = useState(initialData?.primaryColor ?? "#0ea5e9");
-  const [logoUrl, setLogoUrl] = useState(initialData?.logoUrl ?? "");
   const [accentColor, setAccentColor] = useState(initialData?.accentColor ?? "");
+  const [logoUrl, setLogoUrl] = useState(initialData?.logoUrl ?? "");
+  const [phone, setPhone] = useState(initialData?.phone ?? "");
+  const [websiteUrl, setWebsiteUrl] = useState(initialData?.websiteUrl ?? "");
+  const [licenseNumber, setLicenseNumber] = useState(initialData?.licenseNumber ?? "");
+  const [businessDays, setBusinessDays] = useState<string[]>(initialData?.businessDays ?? ["Mon","Tue","Wed","Thu","Fri"]);
+  const [openTime, setOpenTime] = useState(initialData?.openTime ?? "09:00");
+  const [closeTime, setCloseTime] = useState(initialData?.closeTime ?? "17:00");
+  const [awardsStr, setAwardsStr] = useState((initialData?.awards ?? []).join(", "));
   const [services, setServices] = useState<ServiceRow[]>(
-    (initialData?.services?.map((s) => ({
-      name: s.name,
-      description: s.description ?? "",
-      price: typeof s.price === "number" ? s.price : "",
-    })) ??
-      [{ name: "", description: "", price: "" }]) as ServiceRow[]
+    initialData?.services?.length ? initialData.services : [{ name: "", description: "", price: "" }]
   );
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState<{ type: "idle" | "ok" | "err"; text?: string }>({
-    type: "idle",
-  });
 
-  // Auto-suggest slug/subdomain from name if those fields are still blank
+  // Start animation content (editable preview)
+  const [startAnimationHeadline, setStartAnimationHeadline] = useState(
+    initialData?.startAnimationHeadline ?? ""
+  );
+  const [startAnimationSubtext, setStartAnimationSubtext] = useState(
+    initialData?.startAnimationSubtext ?? ""
+  );
+
+  // Derive defaults if empty
+  const computedHeadline = useMemo(
+    () => startAnimationHeadline || (name ? `Welcome to ${name}` : "Welcome to our Front Desk"),
+    [startAnimationHeadline, name]
+  );
+  const computedSubtext = useMemo(
+    () => startAnimationSubtext || "Ask me about availability, pricing, or booking — I’m here to help.",
+    [startAnimationSubtext]
+  );
+
   useEffect(() => {
-    if (!subdomain) setSubdomain(slugify(name));
-    if (!pathSlug) setPathSlug(slugify(name));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name]);
-
-  // Keep user-entered slugs normalized
-  useEffect(() => setSubdomain((s) => slugify(s)), [subdomain]);
-  useEffect(() => setPathSlug((s) => slugify(s)), [pathSlug]);
-
-  const hostPreview = useMemo(() => {
-    if (typeof window === "undefined") return { subdomainUrl: "", pathUrl: "" };
-    const baseHost = window.location.host.replace(/^www\./, "").replace(/^app\./, "");
-    const protocol = window.location.protocol || "https:";
-    const sd = subdomain || "your-subdomain";
-    const slug = pathSlug || "your-slug";
-    return {
-      subdomainUrl: `${protocol}//${sd}.${baseHost}/`,
-      pathUrl: `${protocol}//${baseHost}/t/${slug}`,
-    };
-  }, [subdomain, pathSlug]);
+    if (!subdomain && name) setSubdomain(slugify(name));
+    if (!pathSlug && name) setPathSlug(slugify(name));
+  }, [name]); // eslint-disable-line
 
   function updateService(idx: number, patch: Partial<ServiceRow>) {
-    setServices((rows) => {
-      const next = [...rows];
+    setServices((prev) => {
+      const next = [...prev];
       next[idx] = { ...next[idx], ...patch };
       return next;
     });
   }
-
   function addService() {
-    setServices((rows) => [...rows, { name: "", description: "", price: "" }]);
+    setServices((prev) => [...prev, { name: "", description: "", price: "" }]);
   }
-
   function removeService(idx: number) {
-    setServices((rows) => rows.filter((_, i) => i !== idx));
+    setServices((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  function normalizeServices(input: ServiceRow[]) {
-    return input
-      .map((s) => {
-        const nm = (s.name || "").trim();
-        const desc = (s.description || "").trim();
-        let price: number | undefined = undefined;
-        if (typeof s.price === "number") price = s.price;
-        else if (s.price !== "" && !Number.isNaN(Number(s.price))) price = Number(s.price);
-        return {
-          name: nm,
-          description: desc || undefined,
-          price,
-        };
-      })
-      .filter((s) => s.name);
+  function toggleDay(day: string) {
+    setBusinessDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
   }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setMsg({ type: "idle" });
-    setSaving(true);
-    try {
-      const cleanName = name.trim();
-      if (!cleanName) throw new Error("Business name is required.");
 
-      const payload = {
-        name: cleanName,
-        subdomain: subdomain ? slugify(subdomain) : undefined,
-        pathSlug: pathSlug ? slugify(pathSlug) : undefined,
-        primaryColor,
-        branding: {
-          logoUrl: logoUrl || undefined,
-          accentColor: accentColor || undefined,
-        },
-        services: normalizeServices(services),
-      };
+    const awards = awardsStr
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
-      const res = await fetch("/api/tenant/setup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+    const payload = {
+      name,
+      subdomain: subdomain || slugify(name),
+      pathSlug: pathSlug || slugify(name),
+      primaryColor,
+      accentColor: accentColor || null,
+      logoUrl: logoUrl || null,
+      phone: phone || null,
+      websiteUrl: websiteUrl || null,
+      licenseNumber: licenseNumber || null,
+      businessDays,
+      openTime: openTime || null,
+      closeTime: closeTime || null,
+      awards,
+      services: services
+        .filter((s) => s.name?.trim())
+        .map((s) => ({
+          name: s.name.trim(),
+          description: s.description?.trim() || null,
+          price: s.price === "" ? null : Number(s.price),
+        })),
+      startAnimationHeadline: computedHeadline,
+      startAnimationSubtext: computedSubtext,
+    };
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.detail || json?.error || "Request failed");
+    const res = await fetch("/api/tenant/setup", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-      setMsg({ type: "ok", text: "Front Desk configured!" });
-    } catch (err: any) {
-      setMsg({ type: "err", text: err?.message || "Something went wrong" });
-    } finally {
-      setSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(`Save failed: ${data?.error || res.statusText}`);
+      return;
     }
+    // After save, suggest user jump to dashboard
+    location.href = "/dashboard";
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white">
-      <div className="border-b border-slate-200 px-6 py-4">
-        <h2 className="text-lg font-semibold">Front Desk Setup</h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Configure your company profile, branding, and services. We’ll create a unique URL for your Front Desk.
-        </p>
-      </div>
+    <form onSubmit={onSubmit} className="space-y-8">
+      {/* Company / Theme */}
+      <section className="rounded-xl border p-6 bg-white/5">
+        <h2 className="text-lg font-semibold mb-4">Company & Theme</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="block text-sm mb-1">Company Name</span>
+            <input className="w-full rounded-md bg-white/10 p-2" value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <label className="block">
+            <span className="block text-sm mb-1">Subdomain</span>
+            <input className="w-full rounded-md bg-white/10 p-2" value={subdomain} onChange={(e) => setSubdomain(e.target.value)} />
+          </label>
+          <label className="block">
+            <span className="block text-sm mb-1">Path Slug</span>
+            <input className="w-full rounded-md bg-white/10 p-2" value={pathSlug} onChange={(e) => setPathSlug(e.target.value)} />
+          </label>
+          <label className="block">
+            <span className="block text-sm mb-1">Primary Color</span>
+            <input type="color" className="h-10 w-20 rounded bg-transparent" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} />
+          </label>
+          <label className="block">
+            <span className="block text-sm mb-1">Accent Color (optional)</span>
+            <input className="w-full rounded-md bg-white/10 p-2" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} placeholder="#9333EA or empty" />
+          </label>
+          <label className="block sm:col-span-2">
+            <span className="block text-sm mb-1">Logo URL</span>
+            <input className="w-full rounded-md bg-white/10 p-2" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." />
+          </label>
+        </div>
+      </section>
 
-      <form onSubmit={onSubmit} className="space-y-8 p-6">
-        {/* Company */}
-        <section className="space-y-4">
-          <h3 className="text-base font-medium">Company</h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium">Business name *</span>
-              <input
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Fix It Bathworks"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-slate-400"
-              />
-            </label>
+      {/* Business Details */}
+      <section className="rounded-xl border p-6 bg-white/5">
+        <h2 className="text-lg font-semibold mb-4">Business Details</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="block text-sm mb-1">Phone</span>
+            <input className="w-full rounded-md bg-white/10 p-2" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(555) 555-5555" />
+          </label>
+          <label className="block">
+            <span className="block text-sm mb-1">Website (for AI training)</span>
+            <input className="w-full rounded-md bg-white/10 p-2" value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} placeholder="https://your-site.com" />
+          </label>
+          <label className="block">
+            <span className="block text-sm mb-1">License Number</span>
+            <input className="w-full rounded-md bg-white/10 p-2" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder="ABC-123456" />
+          </label>
 
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium">Primary color</span>
-              <input
-                type="color"
-                value={primaryColor || "#0ea5e9"}
-                onChange={(e) => setPrimaryColor(e.target.value)}
-                className="h-10 w-full cursor-pointer rounded-md border border-slate-300 px-2 py-1"
-                title={primaryColor || "#0ea5e9"}
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium">Logo URL</span>
-              <input
-                value={logoUrl}
-                onChange={(e) => setLogoUrl(e.target.value)}
-                placeholder="https://cdn.yoursite.com/logo.png"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-slate-400"
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium">Accent color</span>
-              <input
-                type="text"
-                value={accentColor}
-                onChange={(e) => setAccentColor(e.target.value)}
-                placeholder="#f59e0b"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-slate-400"
-              />
-            </label>
-          </div>
-        </section>
-
-        {/* URLs */}
-        <section className="space-y-4">
-          <h3 className="text-base font-medium">Unique URL</h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium">Subdomain</span>
-              <input
-                value={subdomain}
-                onChange={(e) => setSubdomain(slugify(e.target.value))}
-                placeholder="fixit"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-slate-400"
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium">Path slug</span>
-              <input
-                value={pathSlug}
-                onChange={(e) => setPathSlug(slugify(e.target.value))}
-                placeholder="fixit"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-slate-400"
-              />
-            </label>
-
-            <div className="flex flex-col justify-end">
-              <p className="text-sm text-slate-600">
-                <span className="font-medium">Preview:</span>{" "}
-                <span className="whitespace-nowrap underline decoration-dotted">
-                  {hostPreview.subdomainUrl}
-                </span>{" "}
-                or{" "}
-                <span className="whitespace-nowrap underline decoration-dotted">
-                  {hostPreview.pathUrl}
-                </span>
-              </p>
+          <div className="sm:col-span-2">
+            <span className="block text-sm mb-2">Business Days</span>
+            <div className="flex flex-wrap gap-2">
+              {ALL_DAYS.map((d) => {
+                const active = businessDays.includes(d);
+                return (
+                  <button
+                    type="button"
+                    key={d}
+                    onClick={() => toggleDay(d)}
+                    className={`px-3 py-1 rounded-full border text-sm ${active ? "bg-blue-600 text-white border-blue-500" : "bg-transparent"}`}
+                  >
+                    {d}
+                  </button>
+                );
+              })}
             </div>
           </div>
-        </section>
 
-        {/* Services */}
-        <section className="space-y-4">
-          <h3 className="text-base font-medium">Services</h3>
+            <label className="block">
+              <span className="block text-sm mb-1">Open Time</span>
+              <input type="time" className="w-full rounded-md bg-white/10 p-2" value={openTime} onChange={(e) => setOpenTime(e.target.value)} />
+            </label>
+            <label className="block">
+              <span className="block text-sm mb-1">Close Time</span>
+              <input type="time" className="w-full rounded-md bg-white/10 p-2" value={closeTime} onChange={(e) => setCloseTime(e.target.value)} />
+            </label>
 
-          <div className="space-y-3">
-            {services.map((row, idx) => (
-              <div
-                key={idx}
-                className="grid grid-cols-1 gap-3 rounded-md border border-slate-200 p-3 sm:grid-cols-12"
-              >
+          <label className="block sm:col-span-2">
+            <span className="block text-sm mb-1">Awards (comma-separated)</span>
+            <input
+              className="w-full rounded-md bg-white/10 p-2"
+              value={awardsStr}
+              onChange={(e) => setAwardsStr(e.target.value)}
+              placeholder="Best of 2024, Top Service Provider, ..."
+            />
+          </label>
+        </div>
+      </section>
+
+      {/* Services */}
+      <section className="rounded-xl border p-6 bg-white/5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Services</h2>
+          <button type="button" onClick={addService} className="rounded-lg border px-3 py-1.5 text-sm hover:bg-white/5">
+            + Add Service
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {services.map((row, i) => (
+            <div key={i} className="grid gap-3 sm:grid-cols-12 rounded-lg border p-3 bg-black/30">
+              <div className="sm:col-span-3">
+                <span className="block text-xs mb-1 opacity-75">Name</span>
+                <input className="w-full rounded-md bg-white/10 p-2" value={row.name} onChange={(e) => updateService(i, { name: e.target.value })} />
+              </div>
+              <div className="sm:col-span-6">
+                <span className="block text-xs mb-1 opacity-75">Description</span>
+                <input className="w-full rounded-md bg-white/10 p-2" value={row.description ?? ""} onChange={(e) => updateService(i, { description: e.target.value })} />
+              </div>
+              <div className="sm:col-span-2">
+                <span className="block text-xs mb-1 opacity-75">Price (USD)</span>
                 <input
-                  className="col-span-12 rounded-md border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-slate-400 sm:col-span-3"
-                  placeholder="Service name"
-                  value={row.name}
-                  onChange={(e) => updateService(idx, { name: e.target.value })}
+                  className="w-full rounded-md bg-white/10 p-2"
+                  value={row.price ?? ""}
+                  onChange={(e) => updateService(i, { price: e.target.value === "" ? "" : Number(e.target.value) })}
+                  placeholder="e.g. 199"
                 />
-                <input
-                  className="col-span-12 rounded-md border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-slate-400 sm:col-span-7"
-                  placeholder="Description"
-                  value={row.description || ""}
-                  onChange={(e) => updateService(idx, { description: e.target.value })}
-                />
-                <input
-                  className="col-span-9 rounded-md border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-slate-400 sm:col-span-1"
-                  placeholder="Price"
-                  inputMode="decimal"
-                  value={row.price === "" ? "" : row.price}
-                  onChange={(e) =>
-                    updateService(idx, {
-                      price: e.target.value === "" ? "" : Number(e.target.value),
-                    })
-                  }
-                />
-                <button
-                  type="button"
-                  onClick={() => removeService(idx)}
-                  className="col-span-3 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:col-span-1"
-                >
+              </div>
+              <div className="sm:col-span-1 flex items-end">
+                <button type="button" onClick={() => removeService(i)} className="w-full rounded-md border px-3 py-2 text-sm hover:bg-white/5">
                   Remove
                 </button>
               </div>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            onClick={addService}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            + Add service
-          </button>
-        </section>
-
-        {/* Save */}
-        <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-md bg-black px-4 py-2 text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {saving ? "Saving…" : "Save Front Desk"}
-          </button>
-
-          {msg.type === "ok" && (
-            <span className="text-sm text-emerald-600">{msg.text}</span>
-          )}
-          {msg.type === "err" && (
-            <span className="text-sm text-red-600">{msg.text}</span>
-          )}
+            </div>
+          ))}
         </div>
-      </form>
-    </div>
+      </section>
+
+      {/* Start Animation Content */}
+      <section className="rounded-xl border p-6 bg-white/5">
+        <h2 className="text-lg font-semibold mb-3">Start Animation Content</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="block text-sm mb-1">Headline</span>
+            <input
+              className="w-full rounded-md bg-white/10 p-2"
+              value={startAnimationHeadline}
+              onChange={(e) => setStartAnimationHeadline(e.target.value)}
+              placeholder={`Welcome to ${name || "our Front Desk"}`}
+            />
+          </label>
+          <label className="block">
+            <span className="block text-sm mb-1">Subtext</span>
+            <input
+              className="w-full rounded-md bg-white/10 p-2"
+              value={startAnimationSubtext}
+              onChange={(e) => setStartAnimationSubtext(e.target.value)}
+              placeholder="Ask me about availability, pricing, or booking — I’m here to help."
+            />
+          </label>
+        </div>
+
+        {/* Live Preview */}
+        <div className="mt-4 rounded-lg bg-black/30 p-4">
+          <div className="text-xl font-bold mb-1">{computedHeadline}</div>
+          <div className="opacity-80">{computedSubtext}</div>
+        </div>
+      </section>
+
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          className="inline-flex items-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-500"
+        >
+          Save & Continue
+        </button>
+        <a href="/dashboard" className="text-sm underline opacity-80 hover:opacity-100">Cancel</a>
+      </div>
+    </form>
   );
 }
