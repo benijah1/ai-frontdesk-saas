@@ -14,7 +14,7 @@
     "vercel-build": "prisma generate && prisma db push --accept-data-loss && node prisma/seed.mjs && next build"
   },
   "prisma": {
-    "seed": "ts-node --transpile-only prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.0.2",
@@ -83,6 +83,7 @@
     "@radix-ui/react-toolbar": "latest",
     "@radix-ui/react-tooltip": "latest",
     "@radix-ui/react-visually-hidden": "latest",
+    "tsx": "^4.19.0",
     "cmdk": "latest",     
     "vaul": "latest", 
     "embla-carousel-react": "latest",  
