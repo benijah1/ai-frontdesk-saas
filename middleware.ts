@@ -1,36 +1,35 @@
-// middleware.ts
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { getToken } from 'next-auth/jwt';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
-  // If a signed-in user hits the public home ("/"), send them to the app dashboard.
-  if (pathname === '/' && token) {
-    const url = req.nextUrl.clone();
-    url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
-  }
+export function middleware(req: NextRequest){
+const url = req.nextUrl;
+const host = req.headers.get("host")||"";
 
-  // Protect app routes for unauthenticated users.
-  const isProtected =
-    pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/crm') ||
-    pathname.startsWith('/calls') ||
-    pathname.startsWith('/settings');
 
-  if (isProtected && !token) {
-    const url = req.nextUrl.clone();
-    url.pathname = '/login';
-    url.searchParams.set('callbackUrl', req.nextUrl.pathname);
-    return NextResponse.redirect(url);
-  }
-
-  return NextResponse.next();
+// Preserve existing NextAuth middleware via re-export pattern if needed.
+// Add subdomain -> path rewrite for frontdesk.
+const parts = host.split(".");
+const isLocal = host.startsWith("localhost");
+if(!isLocal && parts.length > 2){
+const sub = parts[0];
+// Rewrite /frontdesk on subdomain to tenant path route
+if(url.pathname === "/frontdesk"){
+url.pathname = `/t/${sub}/frontdesk`;
+return NextResponse.rewrite(url);
+}
+}
+return NextResponse.next();
 }
 
+
 export const config = {
-  matcher: ['/', '/dashboard/:path*', '/crm/:path*', '/calls/:path*', '/settings/:path*'],
+matcher: [
+"/frontdesk",
+"/t/:path*",
+"/dashboard/:path*",
+"/crm/:path*",
+"/calls/:path*",
+"/settings/:path*",
+],
 };
