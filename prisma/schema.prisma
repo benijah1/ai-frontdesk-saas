@@ -1,79 +1,54 @@
 // prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  // Local dev can use SQLite; production uses Postgres on Vercel
-  provider = env("PRISMA_PROVIDER")
-  url      = env("DATABASE_URL")
+  // Use a literal provider (Prisma does NOT allow env() here)
+  provider = "postgresql"
+  url      = env("DATABASE_URL")        // e.g. Vercel Postgres / Neon
+  // Optional: uncomment if you use migrations during CI with a separate shadow DB
+  // shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
-// ========== MODELS ==========
-
 model User {
-  id             String    @id @default(cuid())
+  id            String    @id @default(cuid())
 
-  // ---- NextAuth base fields ----
-  email          String?   @unique
-  emailVerified  DateTime?
-  name           String?
-  image          String?
+  // NextAuth base fields
+  email         String?   @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
 
-  // ---- Credentials auth ----
-  password       String?
+  // Credentials auth (optional for OAuth-only users)
+  password      String?
 
-  // ---- Authorization / Access ----
-  role           String    @default("USER") // USER | ADMIN | SUPERADMIN
-  isAdmin        Boolean   @default(false)
-  bypassPaywall  Boolean   @default(false)
+  // Authorization / Access
+  role          String    @default("USER") // "USER" | "ADMIN" | "SUPERADMIN"
+  isAdmin       Boolean   @default(false)
+  bypassPaywall Boolean   @default(false)
 
-  createdAt      DateTime  @default(now())
+  createdAt     DateTime  @default(now())
 
-  // ---- Multi-tenant ----
-  tenantId       String?
-  tenant         Tenant?   @relation(fields: [tenantId], references: [id])
+  // Multi-tenant
+  tenantId      String?
+  tenant        Tenant?   @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
-  // ---- NextAuth relations ----
-  sessions       Session[]
-  accounts       Account[]
-
-  @@index([tenantId])
-  @@index([role])
-  @@index([createdAt])
+  // NextAuth relations
+  sessions      Session[]
+  accounts      Account[]
 }
 
 model Tenant {
-  id           String   @id @default(cuid())
-  name         String
-  subdomain    String?  @unique
-  primaryColor String?  @default("#0ea5e9")
-  createdAt    DateTime @default(now())
+  id            String   @id @default(cuid())
+  name          String
+  subdomain     String?  @unique
+  primaryColor  String?  @default("#0ea5e9")
+  createdAt     DateTime @default(now())
 
-  users        User[]
-
-  @@index([createdAt])
-}
-
-model Account {
-  id                 String   @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?  @db.Text
-  session_state      String?
-
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-  @@index([userId])
+  // Backrefs
+  users         User[]
 }
 
 model Session {
@@ -85,7 +60,29 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([expires])
+  @@index([sessionToken])
+}
+
+model Account {
+  id                         String  @id @default(cuid())
+  userId                     String
+  type                       String
+  provider                   String
+  providerAccountId          String
+  refresh_token              String? @db.Text
+  access_token               String? @db.Text
+  expires_at                 Int?
+  token_type                 String?
+  scope                      String?
+  id_token                   String? @db.Text
+  session_state              String?
+  oauth_token_secret         String? @db.Text
+  oauth_token                String? @db.Text
+
+  user                       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model VerificationToken {
