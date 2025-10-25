@@ -1,4 +1,4 @@
-// prisma/schema.prisma
+pathSlug String @unique @default(cuid())
 
 generator client {
   provider = "prisma-client-js"
