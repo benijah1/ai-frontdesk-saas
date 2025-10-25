@@ -4,14 +4,10 @@ import { authOptions } from "./app/api/auth/auth-options";
 
 /**
  * Merge our local tweaks with whatever is already in authOptions.
- * Works on NextAuth v4 and v5 because NextAuthOptions is available (or aliased) in both.
+ * Compatible with NextAuth v4/v5 when using NextAuthOptions.
  */
 const mergedOptions: NextAuthOptions = {
-  // spread user-defined options first so our overrides win where intended
   ...(authOptions as NextAuthOptions),
-
-  // Ensure Vercel/production host checking doesn’t break callbacks
-  trustHost: true,
 
   // Force JWT sessions unless explicitly overridden by provided options
   session: {
@@ -32,7 +28,6 @@ const mergedOptions: NextAuthOptions = {
           : session;
 
       if (token && base) {
-        // attach userId for convenient access in RSC/server actions
         (base as any).userId = token.sub;
       }
       return base;
