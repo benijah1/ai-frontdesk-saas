@@ -22,6 +22,7 @@ return NextResponse.rewrite(url);
 return NextResponse.next();
 }
 
+export { auth as middleware } from "@/auth";
 
 export const config = {
 matcher: [
@@ -31,5 +32,7 @@ matcher: [
 "/crm/:path*",
 "/calls/:path*",
 "/settings/:path*",
+"/setup/:path*",          
+"/(app)/(app)/:path*",    
 ],
 };
