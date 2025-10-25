@@ -1,11 +1,10 @@
 // auth.ts
-import NextAuth, { type NextAuthOptions } from "next-auth";
+import NextAuth, { type NextAuthConfig } from "next-auth";
 import { authOptions } from "./app/api/auth/auth-options";
 
-// Merge our local tweaks with whatever is already in authOptions
-const mergedOptions: NextAuthOptions = {
+// --- Merge our local tweaks with whatever is already in authOptions ---
+const config: NextAuthConfig = {
   ...authOptions,
-  trustHost: true,
   session: {
     strategy: "jwt",
     ...(authOptions as any).session,
@@ -25,14 +24,14 @@ const mergedOptions: NextAuthOptions = {
   },
 };
 
-// Export NextAuth helpers — DO NOT redeclare an `auth()` function yourself.
-export const { auth, signIn, signOut, handlers } = NextAuth(mergedOptions);
+// --- Export NextAuth helpers (v5 pattern) ---
+export const { auth, signIn, signOut, handlers } = NextAuth(config);
 
-// Handy helper for server components / actions
+// --- Server-side helper for getting current user ---
 export async function currentUser() {
   const session = await auth();
   return session?.user ?? null;
 }
 
-// If you need route handlers elsewhere, you can re-export:
+// If you need route handlers elsewhere:
 // export const { GET, POST } = handlers;
