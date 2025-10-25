@@ -2,7 +2,7 @@
 import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
 import Link from "next/link";
-import FrontDeskSetupForm from "./frontdesksetupform";
+import FrontDeskSetupForm from "./FrontDeskSetupForm";
 
 // Coerce the Prisma tenant payload into the shape FrontDeskSetupForm expects
 function toSetupInitialData(tenant: any) {
