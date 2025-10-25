@@ -1,15 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverActions: {
-      allowedOrigins: ['*'],
-    },
+    serverActions: { allowedOrigins: ['*'] },
   },
-  async redirects() {
-    return [
-      { source: '/', destination: '/dashboard', permanent: false },
-    ];
-  },
+  // no redirects() here, we serve a real homepage at "/"
 };
-
 export default nextConfig;
