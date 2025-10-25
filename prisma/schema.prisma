@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  // Prisma requires a literal here (no env() for provider)
   provider = "postgresql"
-  url      = env("DATABASE_URL") // e.g., Vercel Postgres / Neon
+  url      = env("DATABASE_URL")
   // shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
@@ -53,7 +52,9 @@ model Tenant {
   id             String   @id @default(cuid())
   name           String
   subdomain      String?  @unique // e.g. "fixit" => https://fixit.yourapp.com
-  pathSlug       String   @unique @default(cuid()) // fallback path: /t/[pathSlug]
+  // Step 1: make optional so existing rows don't block push.
+  // Still keep a default so new rows are populated automatically.
+  pathSlug       String?  @unique @default(cuid()) // fallback path: /t/[pathSlug]
   logoUrl        String?
   primaryColor   String?  @default("#0ea5e9")
   secondaryColor String?  @default("#111827")
@@ -76,28 +77,27 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([sessionToken])
 }
 
 model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-  oauth_token_secret String? @db.Text
-  oauth_token        String? @db.Text
+  id                  String  @id @default(cuid())
+  userId              String
+  type                String
+  provider            String
+  providerAccountId   String
+  refresh_token       String? @db.Text
+  access_token        String? @db.Text
+  expires_at          Int?
+  token_type          String?
+  scope               String?
+  id_token            String? @db.Text
+  session_state       String?
+  oauth_token_secret  String? @db.Text
+  oauth_token         String? @db.Text
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
