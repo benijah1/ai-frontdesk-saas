@@ -1,8 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverActions: { allowedOrigins: ['*'] },
+    serverActions: {
+      allowedOrigins: ['*'],
+    },
   },
-  // no redirects() here, we serve a real homepage at "/"
+  // No root redirect here; we serve a real homepage at "/"
 };
+
 export default nextConfig;
